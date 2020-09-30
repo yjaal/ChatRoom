@@ -1,5 +1,7 @@
 package net.qiujuer.lesson.sample.server;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import net.qiujuer.lesson.sample.server.handle.ClientHandler;
 
 import java.io.IOException;
@@ -8,13 +10,19 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TCPServer {
+/**
+ * 一个TCP server可能会有多个 ClientHandler 处理相关消息
+ */
+public class TCPServer implements ClientHandler.ClientHandlerCallback{
     private final int port;
     private ClientListener mListener;
     private List<ClientHandler> clientHandlerList = new ArrayList<>();
+    // 消息转发线程池
+    private final ExecutorService forwardingThreadPool;
 
     public TCPServer(int port) {
         this.port = port;
+        this.forwardingThreadPool = Executors.newSingleThreadExecutor();
     }
 
     public boolean start() {
@@ -33,16 +41,46 @@ public class TCPServer {
         if (mListener != null) {
             mListener.exit();
         }
-        for (ClientHandler clientHandler : clientHandlerList) {
-            clientHandler.exit();
+        synchronized (TCPServer.this) {
+            // 这是一个多线程操作，这里使用同步
+            for (ClientHandler clientHandler : clientHandlerList) {
+                clientHandler.exit();
+            }
+            clientHandlerList.clear();
         }
-        clientHandlerList.clear();
+        forwardingThreadPool.shutdown();
     }
 
-    public void broadcast(String str) {
+    public synchronized void broadcast(String str) {
         for (ClientHandler clientHandler : clientHandlerList) {
             clientHandler.send(str);
         }
+    }
+
+    @Override
+    public synchronized void onSelfClosed(ClientHandler handler) {
+        clientHandlerList.remove(handler);
+    }
+
+    @Override
+    public void onNewMsgArrived(final ClientHandler handler, final String msg) {
+        // 消息打印到屏幕
+        System.out.println("Received-" + handler.getClientInfo() + " : " + msg);
+
+        // 这里新起一个线程执行,这里就是一次转发，先接收到消息，然后转发到其他客户端
+        forwardingThreadPool.execute(() -> {
+            synchronized (TCPServer.this) {
+                for (ClientHandler clientHandler : clientHandlerList) {
+                    if (clientHandler.equals(handler)) {
+                        // 如果是我自己发的消息，那么就进入到下一个处理
+                        // 这里是因为要将消息发送到其他客户端中
+                        continue;
+                    }
+                    clientHandler.send(msg);
+                }
+            }
+        });
+
     }
 
     private class ClientListener extends Thread {
@@ -68,10 +106,12 @@ public class TCPServer {
                 }
                 try {
                     // 客户端构建异步线程
-                    ClientHandler clientHandler = new ClientHandler(client, handler -> clientHandlerList.remove(handler));
-                    // 读取数据并打印
+                    ClientHandler clientHandler = new ClientHandler(client, TCPServer.this);
+                    // 之前交给ClientHandler处理是直接打印再屏幕上，后面优化为通知回TCP Server
                     clientHandler.readToPrint();
-                    clientHandlerList.add(clientHandler);
+                    synchronized (TCPServer.this) {
+                        clientHandlerList.add(clientHandler);
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                     System.out.println("客户端连接异常：" + e.getMessage());

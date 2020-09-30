@@ -5,6 +5,10 @@ import net.qiujuer.lesson.sample.client.bean.ServerInfo;
 
 import java.io.IOException;
 
+/**
+ * <p>由于依赖其他工程，后面需要达成jar包运行
+ * 这里验证的时候需要启动一个服务器，多个客户端
+ */
 public class Client {
 
     public static void main(String[] args) {

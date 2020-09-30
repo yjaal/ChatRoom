@@ -42,8 +42,6 @@ class UDPProvider {
 
         @Override
         public void run() {
-            super.run();
-
             System.out.println("UDPProvider Started.");
 
             try {
@@ -77,6 +75,7 @@ class UDPProvider {
                     // 解析命令与回送端口
                     int index = UDPConstants.HEADER.length;
                     short cmd = (short) ((clientData[index++] << 8) | (clientData[index++] & 0xff));
+                    // byte数组转int
                     int responsePort = (((clientData[index++]) << 24) |
                             ((clientData[index++] & 0xff) << 16) |
                             ((clientData[index++] & 0xff) << 8) |
@@ -106,7 +105,6 @@ class UDPProvider {
             } finally {
                 close();
             }
-
             // 完成
             System.out.println("UDPProvider Finished.");
         }

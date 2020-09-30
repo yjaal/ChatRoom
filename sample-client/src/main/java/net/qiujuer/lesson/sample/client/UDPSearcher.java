@@ -95,7 +95,6 @@ public class UDPSearcher {
         private DatagramSocket ds = null;
 
         private Listener(int listenPort, CountDownLatch startDownLatch, CountDownLatch receiveDownLatch) {
-            super();
             this.listenPort = listenPort;
             this.startDownLatch = startDownLatch;
             this.receiveDownLatch = receiveDownLatch;
