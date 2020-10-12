@@ -34,7 +34,7 @@ public class TCPClient {
     }
 
     public void send(String msg) {
-        printStream.printf(msg);
+        printStream.println(msg);
     }
 
     public static TCPClient startWith(ServerInfo info) throws IOException {
@@ -61,6 +61,7 @@ public class TCPClient {
         return null;
     }
 
+    @Deprecated
     private static void write(Socket client) throws IOException {
         // 构建键盘输入流
         InputStream in = System.in;
