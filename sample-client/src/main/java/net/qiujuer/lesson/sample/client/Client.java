@@ -33,7 +33,7 @@ public class Client {
                 write(tcpClient);
             } catch (IOException e) {
                 e.printStackTrace();
-            }finally {
+            } finally {
                 tcpClient.exit();
             }
         }

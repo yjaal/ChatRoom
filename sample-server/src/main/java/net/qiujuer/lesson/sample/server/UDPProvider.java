@@ -35,7 +35,6 @@ class UDPProvider {
         final byte[] buffer = new byte[128];
 
         Provider(String sn, int port) {
-            super();
             this.sn = sn.getBytes();
             this.port = port;
         }

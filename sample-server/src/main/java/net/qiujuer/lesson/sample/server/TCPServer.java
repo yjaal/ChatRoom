@@ -1,5 +1,8 @@
 package net.qiujuer.lesson.sample.server;
 
+import java.net.InetSocketAddress;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import net.qiujuer.lesson.sample.server.handle.ClientHandler;
@@ -16,9 +19,11 @@ import java.util.List;
 public class TCPServer implements ClientHandler.ClientHandlerCallback{
     private final int port;
     private ClientListener mListener;
-    private List<ClientHandler> clientHandlerList = new ArrayList<>();
+    private ClientListener listener;
+    private final List<ClientHandler> clientHandlerList = new ArrayList<>();
     // 消息转发线程池
     private final ExecutorService forwardingThreadPool;
+    private Selector selector;
 
     public TCPServer(int port) {
         this.port = port;
@@ -27,6 +32,15 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback{
 
     public boolean start() {
         try {
+            // 新建一个选择器
+            selector = Selector.open();
+            // 打开一个通道
+            ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
+            // 配置通道为非阻塞
+            serverSocketChannel.configureBlocking(false);
+            // 绑定一个本地的端口
+            serverSocketChannel.socket().bind(new InetSocketAddress(port));
+
             ClientListener listener = new ClientListener(port);
             mListener = listener;
             listener.start();
