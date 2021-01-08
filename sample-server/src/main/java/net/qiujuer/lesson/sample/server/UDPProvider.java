@@ -44,7 +44,7 @@ class UDPProvider {
             System.out.println("UDPProvider Started.");
 
             try {
-                // 监听20000 端口
+                // 监听30201 端口
                 ds = new DatagramSocket(UDPConstants.PORT_SERVER);
                 // 接收消息的Packet
                 DatagramPacket receivePack = new DatagramPacket(buffer, buffer.length);

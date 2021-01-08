@@ -1,8 +1,12 @@
 package net.qiujuer.lesson.sample.server;
 
 import java.net.InetSocketAddress;
+import java.nio.channels.SelectableChannel;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import net.qiujuer.lesson.sample.server.handle.ClientHandler;
@@ -12,11 +16,13 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import net.qiujuer.library.clink.utils.CloseUtils;
 
 /**
  * 一个TCP server可能会有多个 ClientHandler 处理相关消息
  */
-public class TCPServer implements ClientHandler.ClientHandlerCallback{
+public class TCPServer implements ClientHandler.ClientHandlerCallback {
+
     private final int port;
     private ClientListener mListener;
     private ClientListener listener;
@@ -24,6 +30,7 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback{
     // 消息转发线程池
     private final ExecutorService forwardingThreadPool;
     private Selector selector;
+    private ServerSocketChannel server;
 
     public TCPServer(int port) {
         this.port = port;
@@ -40,9 +47,14 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback{
             serverSocketChannel.configureBlocking(false);
             // 绑定一个本地的端口
             serverSocketChannel.socket().bind(new InetSocketAddress(port));
+            // 注册客户端连接到达的监听
+            serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
-            ClientListener listener = new ClientListener(port);
-            mListener = listener;
+            this.server = serverSocketChannel;
+            System.out.println("服务器信息：" + serverSocketChannel.getLocalAddress());
+
+            // 启动客户端监听
+            ClientListener listener = this.mListener = new ClientListener();
             listener.start();
         } catch (IOException e) {
             e.printStackTrace();
@@ -55,6 +67,10 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback{
         if (mListener != null) {
             mListener.exit();
         }
+
+        CloseUtils.close(server);
+        CloseUtils.close(selector);
+
         synchronized (TCPServer.this) {
             // 这是一个多线程操作，这里使用同步
             for (ClientHandler clientHandler : clientHandlerList) {
@@ -98,37 +114,58 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback{
     }
 
     private class ClientListener extends Thread {
-        private ServerSocket server;
-        private boolean done = false;
 
-        private ClientListener(int port) throws IOException {
-            server = new ServerSocket(port);
-            System.out.println("服务器信息：" + server.getInetAddress() + " P:" + server.getLocalPort());
-        }
+        private boolean done = false;
 
         @Override
         public void run() {
+            Selector selector = TCPServer.this.selector;
             System.out.println("服务器准备就绪～");
             // 等待客户端连接
             do {
                 // 得到客户端
-                Socket client;
                 try {
-                    client = server.accept();
-                } catch (IOException e) {
-                    continue;
-                }
-                try {
-                    // 客户端构建异步线程
-                    ClientHandler clientHandler = new ClientHandler(client, TCPServer.this);
-                    // 之前交给ClientHandler处理是直接打印再屏幕上，后面优化为通知回TCP Server
-                    clientHandler.readToPrint();
-                    synchronized (TCPServer.this) {
-                        clientHandlerList.add(clientHandler);
+                    // 理论上一直阻塞，表明客户端状态是唤醒的直接返回
+                    if (selector.select() == 0) {
+                        // 同时此时是一个完成状态
+                        if (done) {
+                            return;
+                        }
+                        continue;
+                    }
+                    Iterator<SelectionKey> iter = selector.selectedKeys().iterator();
+                    while (iter.hasNext()) {
+                        if (done) {
+                            break;
+                        }
+                        SelectionKey key = iter.next();
+                        iter.remove();
+
+                        // 检查当前key是否是当前关注的客户端到达的状态
+                        if (key.isAcceptable()) {
+                            ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
+                            // 非阻塞状态拿到客户端连接
+                            SocketChannel socketChannel = serverChannel.accept();
+
+                            try {
+                                // 客户端构建异步线程
+                                ClientHandler clientHandler = new ClientHandler(socketChannel, TCPServer.this);
+                                // 之前交给ClientHandler处理是直接打印再屏幕上，后面优化为通知回TCP Server
+                                // 这里其实就是读取从客户端收到的数据
+                                clientHandler.readToPrint();
+
+                                // 这里相当于把这个连接保存在本地内存中
+                                synchronized (TCPServer.this) {
+                                    clientHandlerList.add(clientHandler);
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                                System.out.println("客户端连接异常：" + e.getMessage());
+                            }
+                        }
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
-                    System.out.println("客户端连接异常：" + e.getMessage());
                 }
             } while (!done);
             System.out.println("服务器已关闭！");
@@ -136,11 +173,8 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback{
 
         void exit() {
             done = true;
-            try {
-                server.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            // 唤醒当前的阻塞
+            selector.wakeup();
         }
     }
 }
