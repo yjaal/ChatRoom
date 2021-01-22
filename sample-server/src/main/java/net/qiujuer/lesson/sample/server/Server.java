@@ -5,6 +5,8 @@ import net.qiujuer.lesson.sample.foo.constants.TCPConstants;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import net.qiujuer.library.clink.core.IoContext;
+import net.qiujuer.library.clink.impl.IoSelectorProvider;
 
 /**
  * <p>由于依赖其他工程，后面需要打成jar包运行
@@ -15,6 +17,9 @@ import java.io.InputStreamReader;
 public class Server {
 
     public static void main(String[] args) throws IOException {
+
+        IoContext.setup().ioProvider(new IoSelectorProvider()).start();
+
         // 启动一个TCP监听服务，监听30401
         TCPServer tcpServer = new TCPServer(TCPConstants.PORT_SERVER);
         // 启动监听
@@ -38,5 +43,7 @@ public class Server {
 
         UDPProvider.stop();
         tcpServer.stop();
+
+        IoContext.close();
     }
 }

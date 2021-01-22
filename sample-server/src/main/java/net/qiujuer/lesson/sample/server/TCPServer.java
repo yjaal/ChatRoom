@@ -95,9 +95,6 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
 
     @Override
     public void onNewMsgArrived(final ClientHandler handler, final String msg) {
-        // 消息打印到屏幕
-        System.out.println("Received-" + handler.getClientInfo() + " : " + msg);
-
         // 这里新起一个线程执行,这里就是一次转发，先接收到消息，然后转发到其他客户端
         forwardingThreadPool.execute(() -> {
             synchronized (TCPServer.this) {
@@ -151,10 +148,6 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
                             try {
                                 // 客户端构建异步线程
                                 ClientHandler clientHandler = new ClientHandler(socketChannel, TCPServer.this);
-                                // 之前交给ClientHandler处理是直接打印再屏幕上，后面优化为通知回TCP Server
-                                // 这里其实就是读取从客户端收到的数据
-                                clientHandler.readToPrint();
-
                                 // 这里相当于把这个连接保存在本地内存中
                                 synchronized (TCPServer.this) {
                                     clientHandlerList.add(clientHandler);
