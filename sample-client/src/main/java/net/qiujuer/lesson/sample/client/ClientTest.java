@@ -27,7 +27,7 @@ public class ClientTest {
         int size = 0;
         List<TCPClient> tcpClients = new ArrayList<>(size);
         // 创建多个客户端
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 10; i++) {
             try {
                 TCPClient tcpClient = TCPClient.startWith(info);
                 if (Objects.isNull(tcpClient)) {

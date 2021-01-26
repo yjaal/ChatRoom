@@ -35,7 +35,9 @@ public class Connector implements Closeable, SocketChannelAdapter.OnChannelStatu
     }
 
     private void readNextMsg() {
+        System.out.println("开始接收数据");
         if (!Objects.isNull(receiver)) {
+            System.out.println("接收器不为空，开始接收客户端数据");
             try {
                 receiver.receiveAsync(echoReceiveListener);
             } catch (IOException e) {

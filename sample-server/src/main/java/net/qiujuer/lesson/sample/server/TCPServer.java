@@ -1,21 +1,17 @@
 package net.qiujuer.lesson.sample.server;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import net.qiujuer.lesson.sample.server.handle.ClientHandler;
-
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
 import net.qiujuer.library.clink.utils.CloseUtils;
 
 /**
@@ -24,7 +20,6 @@ import net.qiujuer.library.clink.utils.CloseUtils;
 public class TCPServer implements ClientHandler.ClientHandlerCallback {
 
     private final int port;
-    private ClientListener mListener;
     private ClientListener listener;
     private final List<ClientHandler> clientHandlerList = new ArrayList<>();
     // 消息转发线程池
@@ -52,10 +47,10 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
             this.server = serverSocketChannel;
-            System.out.println("服务器信息：" + serverSocketChannel.getLocalAddress());
+            System.out.println("服务器信息：" + serverSocketChannel.getLocalAddress().toString());
 
             // 启动客户端监听
-            ClientListener listener = this.mListener = new ClientListener();
+            ClientListener listener = this.listener = new ClientListener();
             listener.start();
         } catch (IOException e) {
             e.printStackTrace();
@@ -65,8 +60,8 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
     }
 
     public void stop() {
-        if (mListener != null) {
-            mListener.exit();
+        if (listener != null) {
+            listener.exit();
         }
 
         CloseUtils.close(server);
@@ -96,6 +91,7 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
     @Override
     public void onNewMsgArrived(final ClientHandler handler, final String msg) {
         // 这里新起一个线程执行,这里就是一次转发，先接收到消息，然后转发到其他客户端
+        System.out.println("服务端发送数据");
         forwardingThreadPool.execute(() -> {
             synchronized (TCPServer.this) {
                 for (ClientHandler clientHandler : clientHandlerList) {
@@ -108,7 +104,6 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
                 }
             }
         });
-
     }
 
     private class ClientListener extends Thread {
@@ -118,7 +113,7 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
         @Override
         public void run() {
             Selector selector = TCPServer.this.selector;
-            System.out.println("服务器准备就绪～");
+            System.out.println("服务器监听准备就绪，准备接收客户端连接");
             // 等待客户端连接
             do {
                 // 得到客户端
@@ -127,7 +122,7 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
                     if (selector.select() == 0) {
                         // 同时此时是一个完成状态
                         if (done) {
-                            return;
+                            break;
                         }
                         continue;
                     }
@@ -141,12 +136,14 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
 
                         // 检查当前key是否是当前关注的客户端到达的状态
                         if (key.isAcceptable()) {
+                            System.out.println("监听到客户端到达");
                             ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
                             // 非阻塞状态拿到客户端连接
                             SocketChannel socketChannel = serverChannel.accept();
 
                             try {
                                 // 客户端构建异步线程
+                                System.out.println("构建对该客户端的异步处理线程");
                                 ClientHandler clientHandler = new ClientHandler(socketChannel, TCPServer.this);
                                 // 这里相当于把这个连接保存在本地内存中
                                 synchronized (TCPServer.this) {

@@ -1,20 +1,15 @@
 package net.qiujuer.lesson.sample.server.handle;
 
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.Iterator;
-import net.qiujuer.library.clink.core.Connector;
-import net.qiujuer.library.clink.utils.CloseUtils;
-
-import java.io.*;
-import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import sun.misc.Cleaner;
+import net.qiujuer.library.clink.core.Connector;
+import net.qiujuer.library.clink.utils.CloseUtils;
 
 /**
  * <p>这个类就是一个接收发送消息的处理类，TCP server一方面接收来自某个客户端发送的消息
@@ -43,6 +38,7 @@ public class ClientHandler {
 
             @Override
             protected void onReceiveNewMsg(String str) {
+                super.onReceiveNewMsg(str);
                 clientHandlerCallback.onNewMsgArrived(ClientHandler.this, str);
             }
         };

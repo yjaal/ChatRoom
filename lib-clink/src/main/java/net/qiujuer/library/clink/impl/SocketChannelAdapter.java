@@ -13,7 +13,6 @@ import net.qiujuer.library.clink.core.IoProvider.HandleOutputCallback;
 import net.qiujuer.library.clink.core.Receiver;
 import net.qiujuer.library.clink.core.Sender;
 import net.qiujuer.library.clink.utils.CloseUtils;
-import sun.reflect.generics.scope.Scope;
 
 /**
  * channel拥有发送、接收和关闭的功能
@@ -42,20 +41,20 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
     }
 
     @Override
-    public boolean receiveAsync(IOArgsEventListner listner) throws IOException {
+    public boolean receiveAsync(IOArgsEventListner listener) throws IOException {
         if (isClosed.get()) {
             throw new IOException("当前通道已关闭");
         }
-        receiverIoEventListener = listner;
+        receiverIoEventListener = listener;
         return ioProvider.registerInput(channel, inputCallback);
     }
 
     @Override
-    public boolean sendAsync(IoArgs args, IOArgsEventListner listner) throws IOException {
+    public boolean sendAsync(IoArgs args, IOArgsEventListner listener) throws IOException {
         if (isClosed.get()) {
             throw new IOException("当前通道已关闭");
         }
-        sendIoEventListener = listner;
+        sendIoEventListener = listener;
         // 将需要发送的内容设置进去
         outputCallback.setAttach(args);
         return ioProvider.registerOutput(channel, outputCallback);
@@ -74,20 +73,21 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
     private final IoProvider.HandleInputCallback inputCallback = new HandleInputCallback() {
         @Override
         protected void canProviderInput() {
-            if (!isClosed.get()) {
+            if (isClosed.get()) {
                 return;
             }
             IoArgs args = new IoArgs();
-            IoArgs.IOArgsEventListner listner = SocketChannelAdapter.this.receiverIoEventListener;
-            if (!Objects.isNull(listner)) {
-                listner.onStarted(args);
+            IoArgs.IOArgsEventListner listener = SocketChannelAdapter.this.receiverIoEventListener;
+            if (!Objects.isNull(listener)) {
+                listener.onStarted(args);
             }
             // 具体的读取操作
             try {
                 // 有读取到值
-                if (args.read(channel) > 0 && !Objects.isNull(listner)) {
+                System.out.println("处理接收到客户端的数据进行处理");
+                if (args.read(channel) > 0 && !Objects.isNull(listener)) {
                     // 读取后进行回调
-                    listner.onCompleted(args);
+                    listener.onCompleted(args);
                 } else {
                     throw new IOException("当前信息无法被读取");
                 }
@@ -100,7 +100,7 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
     private final IoProvider.HandleOutputCallback outputCallback = new HandleOutputCallback() {
         @Override
         protected void canProviderOutput(Object attach) {
-            if (!isClosed.get()) {
+            if (isClosed.get()) {
                 return;
             }
             // todo
