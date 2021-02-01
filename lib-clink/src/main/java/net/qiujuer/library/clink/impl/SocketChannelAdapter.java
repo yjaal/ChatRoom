@@ -70,24 +70,12 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
         }
     }
 
-    private boolean runed;
 
     private final HandleInputCallback inputCallback = new HandleInputCallback() {
         @Override
         protected void canProviderInput() {
             if (isClosed.get()) {
                 return;
-            }
-
-            if (runed) {
-                return;
-            }
-            runed = true;
-            try {
-                // 这里延迟5s进行实际读取
-                Thread.sleep(5000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
 
             IoArgs args = new IoArgs();

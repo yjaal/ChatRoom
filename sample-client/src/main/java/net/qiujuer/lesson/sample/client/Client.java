@@ -2,14 +2,11 @@ package net.qiujuer.lesson.sample.client;
 
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintStream;
 import java.util.Objects;
 import net.qiujuer.lesson.sample.client.bean.ServerInfo;
-
-import java.io.IOException;
 
 /**
  * <p>由于依赖其他工程，后面需要达成jar包运行
@@ -50,6 +47,9 @@ public class Client {
             // 键盘读取一行
             String str = input.readLine();
             // 发送到服务器
+            tcpClient.send(str);
+            tcpClient.send(str);
+            tcpClient.send(str);
             tcpClient.send(str);
 
             if ("00bye00".equalsIgnoreCase(str)) {

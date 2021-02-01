@@ -74,7 +74,6 @@ public class IoSelectorProvider implements IoProvider {
                                 handleSelection(selectionKey, SelectionKey.OP_READ, inputCallbackMap, inputHandlePool);
                             }
                         }
-                        System.out.println("有数据需要读取：" + selectionKeys.size());
                         selectionKeys.clear();
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -237,7 +236,7 @@ public class IoSelectorProvider implements IoProvider {
         ExecutorService inputHandlePool) {
         // 重点：这里通过状态互消取消当前selector的监听
         // 或者用key.cancel()
-//        key.interestOps(key.readyOps() & ~opRead);
+        key.interestOps(key.readyOps() & ~opRead);
         Runnable runnable = inputCallbackMap.get(key);
         if (!Objects.isNull(runnable) && !inputHandlePool.isShutdown()) {
             // 线程池异步调度
