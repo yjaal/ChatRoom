@@ -38,6 +38,7 @@ public class ClientHandler {
 
             @Override
             protected void onReceiveNewMsg(String str) {
+                super.onReceiveNewMsg(str);
                 clientHandlerCallback.onNewMsgArrived(ClientHandler.this, str);
             }
         };

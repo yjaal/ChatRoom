@@ -9,7 +9,7 @@ import java.nio.channels.SocketChannel;
  */
 public class IoArgs {
 
-    private byte[] byteBuffer = new byte[256];
+    private byte[] byteBuffer = new byte[4];
     private ByteBuffer buffer = ByteBuffer.wrap(byteBuffer);
 
     public int read(SocketChannel channel) throws IOException {
