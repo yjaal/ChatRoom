@@ -7,14 +7,19 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Objects;
 import net.qiujuer.lesson.sample.client.bean.ServerInfo;
+import net.qiujuer.library.clink.core.IoContext;
+import net.qiujuer.library.clink.impl.IoSelectorProvider;
 
 /**
- * <p>由于依赖其他工程，后面需要达成jar包运行
+ * <p>由于依赖其他工程，后面需要打成jar包运行
  * 这里验证的时候需要启动一个服务器，多个客户端
  */
 public class Client {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
+
+        IoContext.setup().ioProvider(new IoSelectorProvider()).start();
+
         // 启动UDP搜索服务，发送广播消息
         ServerInfo info = UDPSearcher.searchServer(10000);
         System.out.println("Server:" + info);
@@ -34,6 +39,8 @@ public class Client {
                 tcpClient.exit();
             }
         }
+
+        IoContext.close();
     }
 
     /**
@@ -48,6 +55,17 @@ public class Client {
             String str = input.readLine();
             // 发送到服务器
             tcpClient.send(str);
+            System.out.println("第一条数据发送");
+
+            tcpClient.send(str);
+            System.out.println("第二条数据发送");
+
+            tcpClient.send(str);
+            System.out.println("第三条数据发送");
+
+            tcpClient.send(str);
+            System.out.println("第四条数据发送");
+
 
             if ("00bye00".equalsIgnoreCase(str)) {
                 break;

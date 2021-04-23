@@ -37,5 +37,11 @@ public interface IoProvider extends Closeable {
         public final void setAttach(Object attach) {
             this.attach = attach;
         }
+
+        public <T> T getAttach() {
+            @SuppressWarnings({"UnnecessaryLocalVariable", "unchecked"})
+            T attach = (T) this.attach;
+            return attach;
+        }
     }
 }

@@ -3,10 +3,9 @@ package net.qiujuer.library.clink.impl;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.qiujuer.library.clink.core.IoArgs;
-import net.qiujuer.library.clink.core.IoArgs.IOArgsEventListner;
+import net.qiujuer.library.clink.core.IoArgs.IOArgsEventListener;
 import net.qiujuer.library.clink.core.IoProvider;
 import net.qiujuer.library.clink.core.IoProvider.HandleInputCallback;
 import net.qiujuer.library.clink.core.IoProvider.HandleOutputCallback;
@@ -28,8 +27,13 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
      */
     private final OnChannelStatusChangedListener listener;
 
-    private IOArgsEventListner receiverIoEventListener;
-    private IOArgsEventListner sendIoEventListener;
+    private IOArgsEventListener receiverIoEventListener;
+    private IOArgsEventListener sendIoEventListener;
+
+    /**
+     * 这里定义后让外层传入
+     */
+    private IoArgs receiveArgsTmp;
 
     public SocketChannelAdapter(SocketChannel channel, IoProvider ioProvider,
         OnChannelStatusChangedListener listener) throws IOException {
@@ -41,16 +45,21 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
     }
 
     @Override
-    public boolean receiveAsync(IOArgsEventListner listener) throws IOException {
+    public void setReceiveListener(IOArgsEventListener listener) {
+        this.receiverIoEventListener = listener;
+    }
+
+    @Override
+    public boolean receiveAsync(IoArgs args) throws IOException {
         if (isClosed.get()) {
             throw new IOException("当前通道已关闭");
         }
-        receiverIoEventListener = listener;
+        receiveArgsTmp = args;
         return ioProvider.registerInput(channel, inputCallback);
     }
 
     @Override
-    public boolean sendAsync(IoArgs args, IOArgsEventListner listener) throws IOException {
+    public boolean sendAsync(IoArgs args, IOArgsEventListener listener) throws IOException {
         if (isClosed.get()) {
             throw new IOException("当前通道已关闭");
         }
@@ -78,16 +87,14 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
                 return;
             }
 
-            IoArgs args = new IoArgs();
-            IOArgsEventListner listener = SocketChannelAdapter.this.receiverIoEventListener;
-            if (!Objects.isNull(listener)) {
-                listener.onStarted(args);
-            }
+            IoArgs args = receiveArgsTmp;
+            IOArgsEventListener listener = SocketChannelAdapter.this.receiverIoEventListener;
+            listener.onStarted(args);
             // 具体的读取操作
             try {
                 // 有读取到值
                 System.out.println("处理接收到客户端的数据进行处理");
-                if (args.read(channel) > 0 && !Objects.isNull(listener)) {
+                if (args.readFrom(channel) > 0) {
                     // 读取后进行回调
                     listener.onCompleted(args);
                 } else {
@@ -105,8 +112,23 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
             if (isClosed.get()) {
                 return;
             }
-            // todo
-            sendIoEventListener.onCompleted(null);
+            IoArgs args = getAttach();
+            IoArgs.IOArgsEventListener listener = sendIoEventListener;
+            listener.onStarted(args);
+
+            // 具体的读取操作
+            try {
+                // 有读取到值
+                System.out.println("处理接收到客户端的数据进行处理");
+                if (args.writeTo(channel) > 0) {
+                    // 读取后进行回调
+                    listener.onCompleted(args);
+                } else {
+                    throw new IOException("当前信息无法被写入");
+                }
+            } catch (IOException e) {
+                CloseUtils.close(SocketChannelAdapter.this);
+            }
         }
     };
 

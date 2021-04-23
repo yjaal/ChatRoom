@@ -56,7 +56,7 @@ public class IoSelectorProvider implements IoProvider {
     }
 
     /**
-     * 这里可以看到我们使用一个单线程处理具体的管道开关获取，然后使用线程池处理具体的读操作
+     * 这里可以看到我们使用一个单线程处理具体的管道开关获取，然后使用线程池处理具体的读操作，相当于启动线程开始监听
      */
     private void startRead() {
         Thread thread = new Thread("Clink IoSelectorProvider ReadSelector Thread") {

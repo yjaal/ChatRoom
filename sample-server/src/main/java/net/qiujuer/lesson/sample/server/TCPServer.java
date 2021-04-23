@@ -90,7 +90,6 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
 
     @Override
     public void onNewMsgArrived(final ClientHandler handler, final String msg) {
-
         // 这里新起一个线程执行,这里就是一次转发，先接收到消息，然后转发到其他客户端
         System.out.println("服务端对其他客户端转发数据");
         forwardingThreadPool.execute(() -> {
