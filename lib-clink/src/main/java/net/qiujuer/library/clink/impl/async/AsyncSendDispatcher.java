@@ -87,7 +87,7 @@ public class AsyncSendDispatcher implements SendDispatcher {
         args.startWriting();
         if (pos >= total) {
             // 已经发送完了
-            isSending.set(false);
+            this.sendNextPacket();
             return;
         } else if (pos == 0) {
             // 第一个包，将数据长度写在包头
