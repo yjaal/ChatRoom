@@ -1,6 +1,6 @@
 package net.qiujuer.library.clink.box;
 
-import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import net.qiujuer.library.clink.core.SendPacket;
 
 /**
@@ -9,7 +9,7 @@ import net.qiujuer.library.clink.core.SendPacket;
  * @author YJ
  * @date 2021/4/19
  **/
-public class StringSendPacket extends SendPacket {
+public class StringSendPacket extends SendPacket<ByteArrayInputStream> {
 
     private final byte[] bytes;
 
@@ -18,14 +18,8 @@ public class StringSendPacket extends SendPacket {
         this.length = bytes.length;
     }
 
-
     @Override
-    public byte[] bytes() {
-        return bytes;
-    }
-
-    @Override
-    public void close() throws IOException {
-
+    protected ByteArrayInputStream createStream() {
+        return new ByteArrayInputStream(bytes);
     }
 }

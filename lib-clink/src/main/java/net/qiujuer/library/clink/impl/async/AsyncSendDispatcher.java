@@ -1,11 +1,13 @@
 package net.qiujuer.library.clink.impl.async;
 
 import java.io.IOException;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.qiujuer.library.clink.core.IoArgs;
-import net.qiujuer.library.clink.core.IoArgs.IOArgsEventListener;
+import net.qiujuer.library.clink.core.IoArgs.IOArgsEventProcessor;
 import net.qiujuer.library.clink.core.SendDispatcher;
 import net.qiujuer.library.clink.core.SendPacket;
 import net.qiujuer.library.clink.core.Sender;
@@ -17,18 +19,24 @@ import net.qiujuer.library.clink.utils.CloseUtils;
  * @author YJ
  * @date 2021/4/19
  **/
-public class AsyncSendDispatcher implements SendDispatcher {
+public class AsyncSendDispatcher implements SendDispatcher, IOArgsEventProcessor {
 
     private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
     private final Sender sender;
-    private final Queue<SendPacket> queue = new ConcurrentLinkedQueue();
+    private final Queue<SendPacket<?>> queue = new ConcurrentLinkedQueue();
     private final AtomicBoolean isSending = new AtomicBoolean();
 
     /**
      * 当前要发送的数据包
      */
-    private SendPacket packetTmp;
+    private SendPacket<?> packetTmp;
+
+    /**
+     * 当前通道
+     */
+    private ReadableByteChannel channel;
+
     /**
      * 之所以这样做，是因为当前要发送的数据包可能比IoArgs缓存要大
      */
@@ -36,14 +44,15 @@ public class AsyncSendDispatcher implements SendDispatcher {
     /**
      * 当前要发送数据包大小
      */
-    private int total;
+    private long total;
     /**
      * 当前数据包发送的进度
      */
-    private int pos;
+    private long pos;
 
     public AsyncSendDispatcher(Sender sender) {
         this.sender = sender;
+        sender.setSendListener(this);
     }
 
     @Override
@@ -83,29 +92,32 @@ public class AsyncSendDispatcher implements SendDispatcher {
      * 具体的发送方法
      */
     private void sendCurPacket() {
-        IoArgs args = ioArgs;
-        args.startWriting();
         if (pos >= total) {
             // 已经发送完了
+            this.completedPacket(pos == total);
             this.sendNextPacket();
             return;
-        } else if (pos == 0) {
-            // 第一个包，将数据长度写在包头
-            args.writeLen(total);
         }
-        // 将实际数据写入
-        byte[] bytes = packetTmp.bytes();
-        int count = args.readFrom(bytes, pos);
-        pos += count;
-        // 完成封装
-        args.finishWriting();
 
-        // 真正开始发送，同时传入一个进度回调类
         try {
-            sender.sendAsync(args, ioArgsEventListener);
+            sender.postSendAsync();
         } catch (IOException e) {
             closeAndNotify();
         }
+    }
+
+    private void completedPacket(boolean isSucceed) {
+        SendPacket packet = this.packetTmp;
+        if (packet == null) {
+            return;
+        }
+        CloseUtils.close(packet, channel);
+
+        this.packetTmp = null;
+        this.channel = null;
+        total = 0;
+        pos = 0;
+
     }
 
     /**
@@ -115,18 +127,6 @@ public class AsyncSendDispatcher implements SendDispatcher {
         CloseUtils.close();
     }
 
-    private final IOArgsEventListener ioArgsEventListener = new IOArgsEventListener() {
-        @Override
-        public void onStarted(IoArgs args) {
-
-        }
-
-        @Override
-        public void onCompleted(IoArgs args) {
-            // 继续发送当前包
-            sendCurPacket();
-        }
-    };
 
     private SendPacket takePacket() {
         SendPacket packet = queue.poll();
@@ -146,11 +146,40 @@ public class AsyncSendDispatcher implements SendDispatcher {
     public void close() throws IOException {
         if (isClosed.compareAndSet(false, true)) {
             isSending.set(false);
-            SendPacket packet = this.packetTmp;
-            if (packet != null) {
-                this.packetTmp = null;
-                CloseUtils.close(packet);
+            // 这里一般是异常导致到关闭
+            this.completedPacket(false);
+        }
+    }
+
+    @Override
+    public IoArgs provideIoArgs() {
+        IoArgs args = ioArgs;
+        if (channel == null) {
+             channel = Channels.newChannel(packetTmp.open());
+            // 包头写入包到大小
+            args.limit(4);
+            // 这里暂时强转int，如果包大小超过int最大值，则会出现数据丢失到情况
+            args.writeLen((int) packetTmp.length());
+        } else {
+            args.limit((int) Math.min(args.capacity(), total - pos));
+            try {
+                int count = args.readFrom(channel);
+                pos += count;
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
             }
         }
+        return ioArgs;
+    }
+
+    @Override
+    public void onConsumeFailed(IoArgs args, Exception e) {
+        e.printStackTrace();
+    }
+
+    @Override
+    public void onConsumeCompleted(IoArgs args) {
+        this.sendCurPacket();
     }
 }

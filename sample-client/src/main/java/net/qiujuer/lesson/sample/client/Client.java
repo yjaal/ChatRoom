@@ -55,17 +55,9 @@ public class Client {
             String str = input.readLine();
             // 发送到服务器
             tcpClient.send(str);
-            System.out.println("第一条数据发送");
-
             tcpClient.send(str);
-            System.out.println("第二条数据发送");
-
             tcpClient.send(str);
-            System.out.println("第三条数据发送");
-
             tcpClient.send(str);
-            System.out.println("第四条数据发送");
-
 
             if ("00bye00".equalsIgnoreCase(str)) {
                 break;
