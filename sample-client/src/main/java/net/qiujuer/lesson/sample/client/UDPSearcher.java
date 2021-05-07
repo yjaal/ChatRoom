@@ -25,7 +25,7 @@ public class UDPSearcher {
         CountDownLatch receiveLatch = new CountDownLatch(1);
         Listener listener = null;
         try {
-            // 监听UDP反馈
+            // 监听UDP反馈，这里监听30202
             listener = listen(receiveLatch);
             // 发送广播消息
             sendBroadcast();
@@ -56,24 +56,22 @@ public class UDPSearcher {
 
     private static void sendBroadcast() throws IOException {
         System.out.println("UDPSearcher sendBroadcast started.");
-
         // 作为搜索方，让系统自动分配端口
         DatagramSocket ds = new DatagramSocket();
-
         // 构建一份请求数据
         ByteBuffer byteBuffer = ByteBuffer.allocate(128);
         // 头部
         byteBuffer.put(UDPConstants.HEADER);
         // CMD命名
         byteBuffer.putShort((short) 1);
-        // 回送端口信息
+        // 回送端口信息,30202
         byteBuffer.putInt(LISTEN_PORT);
         // 直接构建packet
         DatagramPacket requestPacket = new DatagramPacket(byteBuffer.array(),
                 byteBuffer.position() + 1);
         // 广播地址
         requestPacket.setAddress(InetAddress.getByName("255.255.255.255"));
-        // 设置服务器端口
+        // 设置服务器端口30201
         requestPacket.setPort(UDPConstants.PORT_SERVER);
 
         // 发送
@@ -95,7 +93,6 @@ public class UDPSearcher {
         private DatagramSocket ds = null;
 
         private Listener(int listenPort, CountDownLatch startDownLatch, CountDownLatch receiveDownLatch) {
-            super();
             this.listenPort = listenPort;
             this.startDownLatch = startDownLatch;
             this.receiveDownLatch = receiveDownLatch;

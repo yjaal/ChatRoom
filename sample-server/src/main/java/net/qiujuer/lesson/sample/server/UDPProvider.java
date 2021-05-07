@@ -35,19 +35,16 @@ class UDPProvider {
         final byte[] buffer = new byte[128];
 
         Provider(String sn, int port) {
-            super();
             this.sn = sn.getBytes();
             this.port = port;
         }
 
         @Override
         public void run() {
-            super.run();
-
             System.out.println("UDPProvider Started.");
 
             try {
-                // 监听20000 端口
+                // 监听30201 端口
                 ds = new DatagramSocket(UDPConstants.PORT_SERVER);
                 // 接收消息的Packet
                 DatagramPacket receivePack = new DatagramPacket(buffer, buffer.length);
@@ -77,6 +74,7 @@ class UDPProvider {
                     // 解析命令与回送端口
                     int index = UDPConstants.HEADER.length;
                     short cmd = (short) ((clientData[index++] << 8) | (clientData[index++] & 0xff));
+                    // byte数组转int
                     int responsePort = (((clientData[index++]) << 24) |
                             ((clientData[index++] & 0xff) << 16) |
                             ((clientData[index++] & 0xff) << 8) |
@@ -106,7 +104,6 @@ class UDPProvider {
             } finally {
                 close();
             }
-
             // 完成
             System.out.println("UDPProvider Finished.");
         }
