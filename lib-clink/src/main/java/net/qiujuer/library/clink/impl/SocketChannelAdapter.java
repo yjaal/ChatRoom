@@ -92,7 +92,6 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
             IoArgs args = processor.provideIoArgs();
             // 具体的读取操作
             try {
-                // 有读取到值
                 System.out.println("处理接收到客户端的数据进行处理");
                 if (args.readFrom(channel) > 0) {
                     // 读取后进行回调
@@ -112,13 +111,12 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
             if (isClosed.get()) {
                 return;
             }
+            // 这里的sendProcessor是传入的
             IoArgs.IOArgsEventProcessor processor = sendProcessor;
             IoArgs args = processor.provideIoArgs();
 
-            // 具体的读取操作
+            // 具体的发送操作
             try {
-                // 有读取到值
-                System.out.println("处理接收到客户端的数据进行处理");
                 if (args.writeTo(channel) > 0) {
                     // 读取后进行回调
                     processor.onConsumeCompleted(args);

@@ -97,6 +97,7 @@ public class AsyncReceiveDispatcher implements ReceiveDispatcher, IOArgsEventPro
         ReceivePacket packet = this.receivePacketTmp;
         CloseUtils.close(packet);
         this.receivePacketTmp = null;
+
         WritableByteChannel channel = this.packetChannel;
         CloseUtils.close(channel);
         this.packetChannel = null;
@@ -128,6 +129,7 @@ public class AsyncReceiveDispatcher implements ReceiveDispatcher, IOArgsEventPro
 
     @Override
     public void onConsumeCompleted(IoArgs args) {
+        args.printCurBuffer();
         assemblePacket(args);
         // 继续接收
         registerReceive();

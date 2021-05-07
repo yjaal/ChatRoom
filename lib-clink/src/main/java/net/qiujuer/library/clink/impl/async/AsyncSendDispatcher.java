@@ -52,6 +52,7 @@ public class AsyncSendDispatcher implements SendDispatcher, IOArgsEventProcessor
 
     public AsyncSendDispatcher(Sender sender) {
         this.sender = sender;
+        // 设置监听就是自己
         sender.setSendListener(this);
     }
 
@@ -151,10 +152,14 @@ public class AsyncSendDispatcher implements SendDispatcher, IOArgsEventProcessor
         }
     }
 
+    /**
+     * 将数据封装到IoArgs中去
+     */
     @Override
     public IoArgs provideIoArgs() {
         IoArgs args = ioArgs;
         if (channel == null) {
+            // 发送数据包创建一个channel，我们可以从通道中获取数据
              channel = Channels.newChannel(packetTmp.open());
             // 包头写入包到大小
             args.limit(4);
@@ -170,7 +175,7 @@ public class AsyncSendDispatcher implements SendDispatcher, IOArgsEventProcessor
                 return null;
             }
         }
-        return ioArgs;
+        return args;
     }
 
     @Override

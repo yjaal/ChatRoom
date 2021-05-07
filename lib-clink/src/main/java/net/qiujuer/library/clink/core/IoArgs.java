@@ -12,12 +12,11 @@ import java.nio.channels.WritableByteChannel;
  */
 public class IoArgs {
 
-
     private int limit = 5;
     private ByteBuffer buffer = ByteBuffer.allocate(limit);
 
     /**
-     * 表示本次读取了多大数据，从bytes中读，往buffer中写
+     * 表示本次读取了多大数据，从channel中读，往buffer中写
      */
     public int readFrom(ReadableByteChannel channel) throws IOException {
 
@@ -38,7 +37,7 @@ public class IoArgs {
     }
 
     /**
-     * 从buffer中读，往bytes中写
+     * 从buffer中读，往channel中写
      */
     public int writeTo(WritableByteChannel channel) throws IOException {
         // 当前读取到了多少数据，注意这里应该读取多少数据是由limit控制的，我们可以设置每次读取的数据量
@@ -118,6 +117,7 @@ public class IoArgs {
      * 设置写入的长度，相当于数据的包头
      */
     public void writeLen(int total) {
+        // 这里就相当于将头和数据部分分开了
         startWriting();
         buffer.putInt(total);
         finishWriting();
@@ -130,6 +130,16 @@ public class IoArgs {
     public int capacity() {
         return buffer.capacity();
     }
+
+    public void printCurBuffer() {
+        ByteBuffer clone = ByteBuffer.allocate(buffer.capacity());
+        buffer.rewind();//copy from the beginning
+        clone.put(buffer);
+        buffer.rewind();
+        clone.flip();
+        System.out.println("读取到的数据: " + clone.get());
+    }
+
 
     /**
      * 数据提供者、处理者，数据的生产或者消费提供方
