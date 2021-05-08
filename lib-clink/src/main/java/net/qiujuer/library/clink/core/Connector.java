@@ -4,7 +4,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.UUID;
-import net.qiujuer.library.clink.box.StringReceivePacket;
 import net.qiujuer.library.clink.box.StringSendPacket;
 import net.qiujuer.library.clink.impl.SocketChannelAdapter;
 import net.qiujuer.library.clink.impl.async.AsyncReceiveDispatcher;
@@ -75,15 +74,16 @@ public class Connector implements Closeable, SocketChannelAdapter.OnChannelStatu
         System.out.println("收到消息--> " + key.toString() + ": " + str);
     }
 
+    protected void onReceivePacket(ReceivePacket packet) {
+        System.out.println(
+            "收到消息--> " + key.toString() + ": [New Packet]-Type:" + packet.type() + ":[Len:]"
+                + packet.length);
+    }
+
     @Override
     public void onChannelClosed(SocketChannel channel) {
 
     }
 
-    private ReceiveDispatcher.ReceivePacketCallback receivePacketCallback = packet -> {
-        if (packet instanceof StringReceivePacket) {
-            String msg = ((StringReceivePacket) packet).string();
-            onReceiveNewMsg(msg);
-        }
-    };
+    private ReceiveDispatcher.ReceivePacketCallback receivePacketCallback = this::onReceivePacket;
 }

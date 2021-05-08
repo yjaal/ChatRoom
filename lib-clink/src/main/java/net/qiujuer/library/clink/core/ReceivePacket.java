@@ -8,16 +8,26 @@ import java.io.OutputStream;
  * @author YJ
  * @date 2021/4/19
  **/
-public abstract class ReceivePacket<T extends OutputStream> extends Packet<T> {
+public abstract class ReceivePacket<Stream extends OutputStream, Entity> extends Packet<Stream> {
 
     /**
-     * 是否已取消
+     * 当前接收包最终的实体
      */
-    private boolean isCanceled;
+    private Entity entity;
 
-    public boolean isCanceled() {
-        return isCanceled;
+    public ReceivePacket(long len) {
+        this.length = len;
     }
 
-    protected abstract T createStream();
+    public Entity entity() {
+        return entity;
+    }
+
+    protected abstract Entity buildEntity(Stream stream);
+
+    protected abstract Stream createStream();
+
+    protected final void closeStream(Stream stream) {
+        entity = buildEntity(stream);
+    }
 }

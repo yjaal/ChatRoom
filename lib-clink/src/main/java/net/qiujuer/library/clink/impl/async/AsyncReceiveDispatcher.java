@@ -27,7 +27,7 @@ public class AsyncReceiveDispatcher implements ReceiveDispatcher, IOArgsEventPro
     private final ReceivePacketCallback callback;
 
     private IoArgs ioArgs = new IoArgs();
-    private ReceivePacket<?> receivePacketTmp;
+    private ReceivePacket<?, ?> receivePacketTmp;
     private WritableByteChannel packetChannel;
     private long total;
     private long pos;
