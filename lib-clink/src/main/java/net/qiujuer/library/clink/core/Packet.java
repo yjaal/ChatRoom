@@ -37,7 +37,10 @@ public abstract class Packet<T extends Closeable> implements Closeable {
     }
 
     public final T open() {
-        return createStream();
+        if (stream == null) {
+            stream = createStream();
+        }
+        return stream;
     }
 
     @Override

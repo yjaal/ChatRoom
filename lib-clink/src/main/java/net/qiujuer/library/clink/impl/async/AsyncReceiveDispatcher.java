@@ -129,7 +129,6 @@ public class AsyncReceiveDispatcher implements ReceiveDispatcher, IOArgsEventPro
 
     @Override
     public void onConsumeCompleted(IoArgs args) {
-        args.printCurBuffer();
         assemblePacket(args);
         // 继续接收
         registerReceive();

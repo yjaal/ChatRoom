@@ -32,7 +32,7 @@ public class StringReceivePacket extends ReceivePacket<ByteArrayOutputStream> {
 
     @Override
     protected void closeStream(ByteArrayOutputStream stream) throws IOException {
-        super.closeStream(stream);
+//        super.closeStream(stream);
         msg = new String(stream.toByteArray());
     }
 }

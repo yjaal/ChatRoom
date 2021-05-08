@@ -131,16 +131,6 @@ public class IoArgs {
         return buffer.capacity();
     }
 
-    public void printCurBuffer() {
-        ByteBuffer clone = ByteBuffer.allocate(buffer.capacity());
-        buffer.rewind();//copy from the beginning
-        clone.put(buffer);
-        buffer.rewind();
-        clone.flip();
-        System.out.println("读取到的数据: " + clone.get());
-    }
-
-
     /**
      * 数据提供者、处理者，数据的生产或者消费提供方
      */
