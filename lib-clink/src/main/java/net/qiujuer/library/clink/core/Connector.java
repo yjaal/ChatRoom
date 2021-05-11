@@ -1,10 +1,15 @@
 package net.qiujuer.library.clink.core;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.UUID;
+import net.qiujuer.library.clink.box.BytesReceivePacket;
+import net.qiujuer.library.clink.box.FileReceivePacket;
+import net.qiujuer.library.clink.box.StringReceivePacket;
 import net.qiujuer.library.clink.box.StringSendPacket;
+import net.qiujuer.library.clink.core.ReceiveDispatcher.ReceivePacketCallback;
 import net.qiujuer.library.clink.impl.SocketChannelAdapter;
 import net.qiujuer.library.clink.impl.async.AsyncReceiveDispatcher;
 import net.qiujuer.library.clink.impl.async.AsyncSendDispatcher;
@@ -12,12 +17,13 @@ import net.qiujuer.library.clink.impl.async.AsyncSendDispatcher;
 /**
  * 用于标识服务端和客户端的某个连接
  */
-public class Connector implements Closeable, SocketChannelAdapter.OnChannelStatusChangedListener {
+public abstract class Connector implements Closeable,
+    SocketChannelAdapter.OnChannelStatusChangedListener {
 
     /**
      * 这里用于标识连接的唯一性
      */
-    private UUID key = UUID.randomUUID();
+    protected UUID key = UUID.randomUUID();
     private SocketChannel channel;
     private Sender sender;
     private Receiver receiver;
@@ -61,6 +67,11 @@ public class Connector implements Closeable, SocketChannelAdapter.OnChannelStatu
         sendDispatcher.send(packet);
     }
 
+    public void send(SendPacket packet) {
+        // 实际发送还是由IoArgs来完成，由sendDispatcher转发
+        sendDispatcher.send(packet);
+    }
+
     @Override
     public void close() throws IOException {
         receiveDispatcher.close();
@@ -70,14 +81,10 @@ public class Connector implements Closeable, SocketChannelAdapter.OnChannelStatu
         channel.close();
     }
 
-    protected void onReceiveNewMsg(String str) {
-        System.out.println("收到消息--> " + key.toString() + ": " + str);
-    }
-
-    protected void onReceivePacket(ReceivePacket packet) {
+    protected void onReceivedPacket(ReceivePacket packet) {
         System.out.println(
-            "收到消息--> " + key.toString() + ": [New Packet]-Type:" + packet.type() + ":[Len:]"
-                + packet.length);
+            "收到消息--> " + key.toString() + ": [New Packet]-Type:" + packet.type() + ", [Len:"
+                + packet.length + "]");
     }
 
     @Override
@@ -85,5 +92,36 @@ public class Connector implements Closeable, SocketChannelAdapter.OnChannelStatu
 
     }
 
-    private ReceiveDispatcher.ReceivePacketCallback receivePacketCallback = this::onReceivePacket;
+    /**
+     * 创建临时接收文件
+     */
+    protected abstract File createNewReceiveFile();
+
+    private ReceiveDispatcher.ReceivePacketCallback receivePacketCallback = new ReceivePacketCallback() {
+        @Override
+        public ReceivePacket<?, ?> onReceivedNewPacket(byte type, long length) {
+            switch (type) {
+                case Packet.TYPE_MEMORY_BYTES:
+                    return new BytesReceivePacket(length);
+                case Packet.TYPE_MEMORY_STRING:
+                    return new StringReceivePacket(length);
+                case Packet.TYPE_STREAM_FILE:
+                    return new FileReceivePacket(length, createNewReceiveFile());
+                case Packet.TYPE_STREAM_DIRECT:
+                    // 后面完善
+                    return null;
+                default:
+                    throw new UnsupportedOperationException("发送数据的格式不支持");
+
+            }
+        }
+
+        @Override
+        public void onReceivePacketCompleted(ReceivePacket packet) {
+            onReceivedPacket(packet);
+        }
+
+    };
+
+
 }

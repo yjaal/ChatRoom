@@ -1,5 +1,6 @@
 package net.qiujuer.lesson.sample.server;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
@@ -27,7 +28,10 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
     private Selector selector;
     private ServerSocketChannel server;
 
-    public TCPServer(int port) {
+    private final File cachePath;
+
+    public TCPServer(int port, File cachePath) {
+        this.cachePath = cachePath;
         this.port = port;
         this.forwardingThreadPool = Executors.newSingleThreadExecutor();
     }
@@ -144,7 +148,8 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
                             try {
                                 // 客户端构建异步线程
                                 System.out.println("构建对该客户端的异步处理线程");
-                                ClientHandler clientHandler = new ClientHandler(socketChannel, TCPServer.this);
+                                ClientHandler clientHandler = new ClientHandler(socketChannel,
+                                    TCPServer.this, cachePath);
                                 // 这里相当于把这个连接保存在本地内存中
                                 synchronized (TCPServer.this) {
                                     clientHandlerList.add(clientHandler);

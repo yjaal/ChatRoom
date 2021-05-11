@@ -1,10 +1,12 @@
 package net.qiujuer.lesson.sample.client;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import net.qiujuer.lesson.sample.client.bean.ServerInfo;
+import net.qiujuer.lesson.sample.foo.Foo;
 
 /**
  * <p>测试类，可以使用JvirtualVM进行测试
@@ -15,6 +17,8 @@ public class ClientTest {
     private static boolean done;
 
     public static void main(String[] args) throws IOException {
+
+        File cachePath = Foo.getCacheDir("client/test");
         // 启动UDP搜索服务，发送广播消息
         ServerInfo info = UDPSearcher.searchServer(10000);
         System.out.println("Server:" + info);
@@ -29,7 +33,7 @@ public class ClientTest {
         // 创建多个客户端
         for (int i = 0; i < 10; i++) {
             try {
-                TCPClient tcpClient = TCPClient.startWith(info);
+                TCPClient tcpClient = TCPClient.startWith(info, cachePath);
                 if (Objects.isNull(tcpClient)) {
                     System.out.println("连接异常");
                     continue;

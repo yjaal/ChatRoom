@@ -4,9 +4,9 @@ import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
-import net.qiujuer.library.clink.box.StringReceivePacket;
 import net.qiujuer.library.clink.core.IoArgs;
 import net.qiujuer.library.clink.core.IoArgs.IOArgsEventProcessor;
+import net.qiujuer.library.clink.core.Packet;
 import net.qiujuer.library.clink.core.ReceiveDispatcher;
 import net.qiujuer.library.clink.core.ReceivePacket;
 import net.qiujuer.library.clink.core.Receiver;
@@ -74,7 +74,8 @@ public class AsyncReceiveDispatcher implements ReceiveDispatcher, IOArgsEventPro
     private void assemblePacket(IoArgs args) {
         if (receivePacketTmp == null) {
             int length = args.readLen();
-            receivePacketTmp = new StringReceivePacket(length);
+            byte type = length > 200 ? Packet.TYPE_STREAM_FILE : Packet.TYPE_MEMORY_STRING;
+            receivePacketTmp = callback.onReceivedNewPacket(type, length);
             packetChannel = Channels.newChannel(receivePacketTmp.open());
             total = length;
             pos = 0;

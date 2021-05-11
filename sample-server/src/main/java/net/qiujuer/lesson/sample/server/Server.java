@@ -1,5 +1,7 @@
 package net.qiujuer.lesson.sample.server;
 
+import java.io.File;
+import net.qiujuer.lesson.sample.foo.Foo;
 import net.qiujuer.lesson.sample.foo.constants.TCPConstants;
 
 import java.io.BufferedReader;
@@ -18,10 +20,12 @@ public class Server {
 
     public static void main(String[] args) throws IOException {
 
+        File cachePath = Foo.getCacheDir("server");
+
         IoContext.setup().ioProvider(new IoSelectorProvider()).start();
 
         // 启动一个TCP监听服务，监听30401
-        TCPServer tcpServer = new TCPServer(TCPConstants.PORT_SERVER);
+        TCPServer tcpServer = new TCPServer(TCPConstants.PORT_SERVER, cachePath);
         // 启动监听
         boolean isSucceed = tcpServer.start();
         if (!isSucceed) {
@@ -37,9 +41,12 @@ public class Server {
         String str;
         do {
             str = bufferedReader.readLine();
+            if ("00bye00".equalsIgnoreCase(str)) {
+                break;
+            }
             // 向所有的TCP连接发送消息
             tcpServer.broadcast(str);
-        } while (!"00bye00".equalsIgnoreCase(str));
+        } while (true);
 
         UDPProvider.stop();
         tcpServer.stop();
