@@ -60,4 +60,12 @@ public abstract class Packet<Stream extends Closeable> implements Closeable {
             stream = null;
         }
     }
+
+    /**
+     * 头部额外信息，用于携带额外到校验信息等
+     */
+    public byte[] headerInfo() {
+
+        return null;
+    }
 }

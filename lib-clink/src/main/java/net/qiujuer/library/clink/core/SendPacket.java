@@ -20,4 +20,8 @@ public abstract class SendPacket<T extends InputStream> extends Packet<T> {
     }
 
     protected abstract T createStream();
+
+    public void cancel() {
+        this.isCanceled = true;
+    }
 }

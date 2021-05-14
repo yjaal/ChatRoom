@@ -110,7 +110,7 @@ public class IoArgs {
      * 设置单次写操作的缓存容纳空间
      */
     public void limit(int limit) {
-        this.limit = limit;
+        this.limit = Math.min(limit, buffer.capacity());
     }
 
     /**
@@ -129,6 +129,11 @@ public class IoArgs {
 
     public int capacity() {
         return buffer.capacity();
+    }
+
+    public boolean remained() {
+        // 返回当前buffer可存储空间是否大于0
+        return buffer.remaining() > 0;
     }
 
     /**
