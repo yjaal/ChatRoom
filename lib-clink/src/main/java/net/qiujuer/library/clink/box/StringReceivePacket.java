@@ -1,8 +1,6 @@
 package net.qiujuer.library.clink.box;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import net.qiujuer.library.clink.core.ReceivePacket;
 
 /**
  * 字符串接收包定义
@@ -10,29 +8,19 @@ import net.qiujuer.library.clink.core.ReceivePacket;
  * @author YJ
  * @date 2021/4/19
  **/
-public class StringReceivePacket extends ReceivePacket<ByteArrayOutputStream> {
+public class StringReceivePacket extends AbsByteArrayReceivePacket<String> {
 
-    private String msg;
-
-    public StringReceivePacket(int len) {
-        this.length = len;
-    }
-
-    /**
-     * 获取到接收的字符串
-     */
-    public String string() {
-        return msg;
+    public StringReceivePacket(long len) {
+        super(len);
     }
 
     @Override
-    protected ByteArrayOutputStream createStream() {
-        return new ByteArrayOutputStream((int) length);
+    protected String buildEntity(ByteArrayOutputStream stream) {
+        return new String(stream.toByteArray());
     }
 
     @Override
-    protected void closeStream(ByteArrayOutputStream stream) throws IOException {
-        super.closeStream(stream);
-        msg = new String(stream.toByteArray());
+    public byte type() {
+        return TYPE_MEMORY_STRING;
     }
 }

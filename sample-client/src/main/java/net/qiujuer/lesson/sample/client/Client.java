@@ -2,11 +2,14 @@ package net.qiujuer.lesson.sample.client;
 
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Objects;
 import net.qiujuer.lesson.sample.client.bean.ServerInfo;
+import net.qiujuer.lesson.sample.foo.Foo;
+import net.qiujuer.library.clink.box.FileSendPacket;
 import net.qiujuer.library.clink.core.IoContext;
 import net.qiujuer.library.clink.impl.IoSelectorProvider;
 
@@ -17,6 +20,7 @@ import net.qiujuer.library.clink.impl.IoSelectorProvider;
 public class Client {
 
     public static void main(String[] args) throws IOException {
+        File cachePath = Foo.getCacheDir("client");
 
         IoContext.setup().ioProvider(new IoSelectorProvider()).start();
 
@@ -28,7 +32,7 @@ public class Client {
             TCPClient tcpClient = null;
             try {
                 // 连接TCP服务
-                tcpClient = TCPClient.startWith(info);
+                tcpClient = TCPClient.startWith(info, cachePath);
                 if (Objects.isNull(tcpClient)) {
                     return;
                 }
@@ -53,15 +57,26 @@ public class Client {
         do {
             // 键盘读取一行
             String str = input.readLine();
-            // 发送到服务器
-            tcpClient.send(str);
-            tcpClient.send(str);
-            tcpClient.send(str);
-            tcpClient.send(str);
-
+            // 直接停止
             if ("00bye00".equalsIgnoreCase(str)) {
                 break;
             }
+            // 自定义文件发送格式 --file url
+            if (str.startsWith("--file")) {
+                String[] arr = str.split(" ");
+                if (arr.length >= 2) {
+                    String filePath = arr[1];
+                    File file = new File(filePath);
+                    if (file.exists() && file.isFile()) {
+                        FileSendPacket fileSendPacket = new FileSendPacket(file);
+                        tcpClient.send(fileSendPacket);
+                        continue;
+                    }
+                }
+            }
+
+            // 字符串发送
+            tcpClient.send(str);
         } while (true);
     }
 }

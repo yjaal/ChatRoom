@@ -12,7 +12,7 @@ import java.nio.channels.WritableByteChannel;
  */
 public class IoArgs {
 
-    private int limit = 5;
+    private int limit = 256;
     private ByteBuffer buffer = ByteBuffer.allocate(limit);
 
     /**
@@ -110,7 +110,7 @@ public class IoArgs {
      * 设置单次写操作的缓存容纳空间
      */
     public void limit(int limit) {
-        this.limit = limit;
+        this.limit = Math.min(limit, buffer.capacity());
     }
 
     /**
@@ -131,15 +131,10 @@ public class IoArgs {
         return buffer.capacity();
     }
 
-    public void printCurBuffer() {
-        ByteBuffer clone = ByteBuffer.allocate(buffer.capacity());
-        buffer.rewind();//copy from the beginning
-        clone.put(buffer);
-        buffer.rewind();
-        clone.flip();
-        System.out.println("读取到的数据: " + clone.get());
+    public boolean remained() {
+        // 返回当前buffer可存储空间是否大于0
+        return buffer.remaining() > 0;
     }
-
 
     /**
      * 数据提供者、处理者，数据的生产或者消费提供方

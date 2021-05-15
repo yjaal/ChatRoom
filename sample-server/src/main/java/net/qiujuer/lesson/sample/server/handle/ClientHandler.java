@@ -1,14 +1,13 @@
 package net.qiujuer.lesson.sample.server.handle;
 
 
+import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import net.qiujuer.lesson.sample.foo.Foo;
 import net.qiujuer.library.clink.core.Connector;
+import net.qiujuer.library.clink.core.Packet;
+import net.qiujuer.library.clink.core.ReceivePacket;
 import net.qiujuer.library.clink.utils.CloseUtils;
 
 /**
@@ -19,16 +18,18 @@ public class ClientHandler extends Connector {
 
     private final ClientHandlerCallback clientHandlerCallback;
 
+    private final File cachePath;
+
     /**
      * 自身的一个描述信息
      */
     private final String clientInfo;
 
-    public ClientHandler(SocketChannel socketChannel, ClientHandlerCallback clientHandlerCallback)
-        throws IOException {
+    public ClientHandler(SocketChannel socketChannel, ClientHandlerCallback clientHandlerCallback
+        , File cachePath) throws IOException {
 
+        this.cachePath = cachePath;
         this.clientHandlerCallback = clientHandlerCallback;
-
         this.clientInfo = socketChannel.getRemoteAddress().toString();
 
         System.out.println("新客户端连接：" + clientInfo);
@@ -48,10 +49,19 @@ public class ClientHandler extends Connector {
     }
 
     @Override
-    protected void onReceiveNewMsg(String str) {
-        super.onReceiveNewMsg(str);
-        // 转发
-        clientHandlerCallback.onNewMsgArrived(this, str);
+    protected File createNewReceiveFile() {
+        return Foo.createRandomTemp(cachePath);
+    }
+
+    @Override
+    protected void onReceivedPacket(ReceivePacket packet) {
+        super.onReceivedPacket(packet);
+        if (packet.type() == Packet.TYPE_MEMORY_STRING) {
+            String msg = (String) packet.entity();
+            System.out.println(key.toString() + ":" + msg);
+            // 转发
+            clientHandlerCallback.onNewMsgArrived(this, msg);
+        }
     }
 
     private void exitBySelf() {

@@ -93,7 +93,9 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
             // 具体的读取操作
             try {
                 System.out.println("处理接收到客户端的数据进行处理");
-                if (args.readFrom(channel) > 0) {
+                if (args == null) {
+                    processor.onConsumeFailed(null, new IOException("Provider IoArgs is null"));
+                } else if (args.readFrom(channel) > 0) {
                     // 读取后进行回调
                     processor.onConsumeCompleted(args);
                 } else {

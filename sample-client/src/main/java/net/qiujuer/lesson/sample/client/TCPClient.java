@@ -1,23 +1,27 @@
 package net.qiujuer.lesson.sample.client;
 
 
-import java.nio.channels.SocketChannel;
-import net.qiujuer.lesson.sample.client.bean.ServerInfo;
-import net.qiujuer.library.clink.core.Connector;
-import net.qiujuer.library.clink.utils.CloseUtils;
-
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
+import java.nio.channels.SocketChannel;
+import net.qiujuer.lesson.sample.client.bean.ServerInfo;
+import net.qiujuer.lesson.sample.foo.Foo;
+import net.qiujuer.library.clink.core.Connector;
+import net.qiujuer.library.clink.core.Packet;
+import net.qiujuer.library.clink.core.ReceivePacket;
+import net.qiujuer.library.clink.utils.CloseUtils;
 
 /**
  * @author joyang
  */
 public class TCPClient extends Connector {
 
-    public TCPClient(SocketChannel socketChannel) throws IOException {
+    private final File cachePath;
+
+    public TCPClient(SocketChannel socketChannel, File cachePath) throws IOException {
+        this.cachePath = cachePath;
         setup(socketChannel);
     }
 
@@ -25,7 +29,7 @@ public class TCPClient extends Connector {
         CloseUtils.close(this);
     }
 
-    public static TCPClient startWith(ServerInfo info) throws IOException {
+    public static TCPClient startWith(ServerInfo info, File cachePath) throws IOException {
         SocketChannel socketChannel = SocketChannel.open();
 
         // 连接本地，端口2000
@@ -37,7 +41,7 @@ public class TCPClient extends Connector {
         System.out.println("服务器信息：" + socketChannel.getRemoteAddress().toString());
 
         try {
-            return new TCPClient(socketChannel);
+            return new TCPClient(socketChannel, cachePath);
         } catch (Exception e) {
             System.out.println("连接异常");
             CloseUtils.close(socketChannel);
@@ -46,8 +50,22 @@ public class TCPClient extends Connector {
     }
 
     @Override
+    protected void onReceivedPacket(ReceivePacket packet) {
+        super.onReceivedPacket(packet);
+        if (packet.type() == Packet.TYPE_MEMORY_STRING) {
+            String msg = (String) packet.entity();
+            System.out.println(key.toString() + ":" + msg);
+        }
+    }
+
+    @Override
     public void onChannelClosed(SocketChannel channel) {
         super.onChannelClosed(channel);
         System.out.println("链接关闭");
+    }
+
+    @Override
+    protected File createNewReceiveFile() {
+        return Foo.createRandomTemp(cachePath);
     }
 }
