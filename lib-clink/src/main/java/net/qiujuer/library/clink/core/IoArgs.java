@@ -8,7 +8,9 @@ import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
 
 /**
- * 这里主要是对buffer进行封装
+ * 这里主要是对buffer进行封装,一定要注意网络读写和本地读写是相反的，比如在发送的时候readFrom从
+ * <P> channel或者bytes中读取数据到buffer中，然后进行网络发送
+ * <p> 而通过writeTo方法又从buffer中获取数据写入到channel或者bytes进行数据接收
  */
 public class IoArgs {
 
@@ -135,6 +137,31 @@ public class IoArgs {
         // 返回当前buffer可存储空间是否大于0
         return buffer.remaining() > 0;
     }
+
+    /**
+     * 从bytes数组中进行消费, bytes-->buffer
+     */
+    public int readFrom(byte[] bytes, int offset, int count) {
+        int size = Math.min(count, buffer.remaining());
+        if (size <= 0) {
+            return 0;
+        }
+        buffer.put(bytes, offset, size);
+        return size;
+    }
+
+    /**
+     * 从buffer数组中进行读取, buffer-->bytes
+     */
+    public int writeTo(byte[] bytes, int offset, int count) {
+        int size = Math.min(count, buffer.remaining());
+        if (size <= 0) {
+            return 0;
+        }
+        buffer.get(bytes, offset, size);
+        return size;
+    }
+
 
     /**
      * 数据提供者、处理者，数据的生产或者消费提供方

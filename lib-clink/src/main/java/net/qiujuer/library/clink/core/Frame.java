@@ -22,22 +22,22 @@ public abstract class Frame {
     /**
      * 报文头
      */
-    private static final byte TYPE_PACKET_HEADER = 11;
+    public static final byte TYPE_PACKET_HEADER = 11;
     /**
      * 报文体
      */
-    private static final byte TYPE_PACKET_ENTITY = 12;
+    public static final byte TYPE_PACKET_ENTITY = 12;
 
     /**
      * 发送取消
      */
-    private static final byte TYPE_COMMAND_SEND_CANCEL = 41;
+    public static final byte TYPE_COMMAND_SEND_CANCEL = 41;
     /**
      * 接收拒绝
      */
-    private static final byte TYPE_COMMAND_RECEIVE_REJECT = 42;
+    public static final byte TYPE_COMMAND_RECEIVE_REJECT = 42;
 
-    private static final byte FLAG_NONE = 0;
+    public static final byte FLAG_NONE = 0;
 
 
     protected final byte[] header = new byte[FRAME_HEADER_LEN];

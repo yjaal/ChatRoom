@@ -15,9 +15,9 @@ public abstract class AbstractSendFrame extends Frame {
     /**
      * 表示帧头还有多少没有被输出，帧头一般是一次性发送，所以这里直接赋值为固定值
      */
-    byte headerRemaining = Frame.FRAME_HEADER_LEN;
+    volatile byte headerRemaining = Frame.FRAME_HEADER_LEN;
 
-    int bodyRemaining;
+    volatile int bodyRemaining;
 
     public AbstractSendFrame(int len, byte type, byte flag, short identifier) {
         super(len, type, flag, identifier);
@@ -28,22 +28,34 @@ public abstract class AbstractSendFrame extends Frame {
      * 数据消费
      */
     @Override
-    public boolean handle(IoArgs args) throws IOException {
-        args.limit(headerRemaining + bodyRemaining);
-        args.startWriting();
+    public synchronized boolean handle(IoArgs args) throws IOException {
+        try {
+            args.limit(headerRemaining + bodyRemaining);
+            args.startWriting();
 
-        // 帧头还未发送
-        if (headerRemaining > 0 && args.remained()) {
-            headerRemaining -= consumeHeader(args);
+            // 帧头还未发送
+            if (headerRemaining > 0 && args.remained()) {
+                headerRemaining -= consumeHeader(args);
+            }
+            // 帧头已发送完，帧体还未发送完
+            if (headerRemaining == 0 && args.remained() && bodyRemaining > 0) {
+                bodyRemaining -= consumeBody(args);
+            }
+            return headerRemaining == 0 && bodyRemaining == 0;
+        } finally {
+            args.finishWriting();
         }
-        // 帧头已发送完，帧体还未发送完
-        if (headerRemaining == 0 && args.remained() && bodyRemaining > 0) {
-            bodyRemaining -= consumeBody(args);
-        }
-        return headerRemaining == 0 && bodyRemaining == 0;
     }
 
     protected abstract int consumeBody(IoArgs args) throws IOException;
 
-    protected abstract byte consumeHeader(IoArgs args) throws IOException;
+    /**
+     * 头部消费基本是固定的，可以直接实现
+     */
+    private byte consumeHeader(IoArgs args) throws IOException {
+        int count = headerRemaining;
+        // 消费开始的坐标
+        int offset = header.length - count;
+        return (byte) args.readFrom(header, offset, count);
+    }
 }
