@@ -25,7 +25,7 @@ public abstract class AbstractSendFrame extends Frame {
     }
 
     /**
-     * 数据消费
+     * 数据消费，一个线程消费的时候不允许其他线程进来
      */
     @Override
     public synchronized boolean handle(IoArgs args) throws IOException {
@@ -58,4 +58,12 @@ public abstract class AbstractSendFrame extends Frame {
         int offset = header.length - count;
         return (byte) args.readFrom(header, offset, count);
     }
+
+    /**
+     * 当前数据是否在发送中， 通过检测头部数据是否有发送进行检测
+     */
+    protected synchronized boolean isSending() {
+        return headerRemaining < Frame.FRAME_HEADER_LEN;
+    }
+
 }

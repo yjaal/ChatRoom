@@ -21,8 +21,6 @@ public class IoArgs {
      * 表示本次读取了多大数据，从channel中读，往buffer中写
      */
     public int readFrom(ReadableByteChannel channel) throws IOException {
-
-        startWriting();
         // 当前读取到了多少数据，注意这里应该读取多少数据是由limit控制的，我们可以设置每次读取的数据量
         int bytesProduced = 0;
         while (buffer.hasRemaining()) {
@@ -32,8 +30,6 @@ public class IoArgs {
             }
             bytesProduced += len;
         }
-
-        finishWriting();
         return bytesProduced;
 
     }
@@ -115,16 +111,6 @@ public class IoArgs {
         this.limit = Math.min(limit, buffer.capacity());
     }
 
-    /**
-     * 设置写入的长度，相当于数据的包头
-     */
-    public void writeLen(int total) {
-        // 这里就相当于将头和数据部分分开了
-        startWriting();
-        buffer.putInt(total);
-        finishWriting();
-    }
-
     public int readLen() {
         return buffer.getInt();
     }
@@ -133,6 +119,9 @@ public class IoArgs {
         return buffer.capacity();
     }
 
+    /**
+     * 表示还有可消费的数据区间
+     */
     public boolean remained() {
         // 返回当前buffer可存储空间是否大于0
         return buffer.remaining() > 0;
@@ -160,6 +149,16 @@ public class IoArgs {
         }
         buffer.get(bytes, offset, size);
         return size;
+    }
+
+    /**
+     * 用户取消后填充假数据
+     */
+    public int fillEmpty(int size) {
+        int fillSize = Math.min(size, buffer.remaining());
+        // buffer需要位移，冒充填充了数据
+        buffer.position(buffer.position() + fillSize);
+        return fillSize;
     }
 
 

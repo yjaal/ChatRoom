@@ -1,7 +1,7 @@
 package net.qiujuer.library.clink.core.ds;
 
 /**
- * 带优先级带节点，可用于构成链表
+ * 带优先级带节点，可用于构成链表，在发送的过程中可以按照优先级进行发送
  *
  * @author YJ
  * @date 2021/5/12

@@ -17,7 +17,7 @@ public abstract class Frame {
     /**
      * 最大长度：2^16-1
      */
-    private static final int MAX_CAPACITY = (2 << 15) - 1;
+    public static final int MAX_CAPACITY = (2 << 15) - 1;
 
     /**
      * 报文头
@@ -42,6 +42,9 @@ public abstract class Frame {
 
     protected final byte[] header = new byte[FRAME_HEADER_LEN];
 
+    /**
+     * 这里初始化帧头部分
+     */
     public Frame(int len, byte type, byte flag, short identifier) {
         if (len < 0 || len > MAX_CAPACITY) {
             throw new RuntimeException("");
@@ -52,7 +55,7 @@ public abstract class Frame {
             throw new RuntimeException("");
         }
 
-        // 长度len为int，有4个字节，我们的头中只有两个字节
+        // 长度len为int，有4个字节，我们的头中只有两个字节，这里截取后面两个字节到头中
         // 这里向右移动8位，将低8位移除，强制转化位byte，只保留低8位，这就是长度的第一个段
         header[0] = (byte) (len >> 8);
         // 强制转化位byte，只保留低8位，这就是长度的第二个段
@@ -71,8 +74,12 @@ public abstract class Frame {
         System.arraycopy(header, 0, this.header, 0, FRAME_HEADER_LEN);
     }
 
+    /**
+     * 获取长度
+     */
     public int getBodyLen() {
-        //Java 总是把 byte 当做有符处理；我们可以通过将其和 0xFF（一个byte） 进行二进制与得到它的无符值
+        // java总是把 byte 当做有符处理，在强转为int时需要取其无符号值；
+        // 我们可以通过将其和 0xFF（一个byte） 进行二进制与得到它的无符值
         return ((((int) header[0]) & 0xFF) << 8) | (((int) header[1]) & 0xFF);
     }
 
@@ -93,9 +100,12 @@ public abstract class Frame {
      */
     public abstract boolean handle(IoArgs args) throws IOException;
 
-    // 在传输过程中，如果一个文件很大，那么如果直接将文件数据分片为多个帧存入到内存
-    // 这样其实会消耗很大的内存，其实在发送的时候只有那一帧在发送，而其他帧则在等待
-    // 所以可以先发送前面一帧，前面一帧发送完了之后再构建后面一帧，而同时可以先让头
-    // 帧发送完成之后再构建数据帧
+    /**
+     * 在传输过程中，如果一个文件很大，那么如果直接将文件数据分片为多个帧存入到内存
+     * <p> 这样其实会消耗很大的内存，其实在发送的时候只有那一帧在发送，而其他帧则在等待
+     * <p> 所以可以先发送前面一帧，前面一帧发送完了之后再构建后面一帧，而同时可以先让头
+     * <p> 帧发送完成之后再构建数据帧
+     * <p> 如果是一个64M到文件，按照每帧64K的大小，需要1024（数据）+1（头）个帧，不需要一次性生成
+     */
     public abstract Frame nextFrame();
 }
