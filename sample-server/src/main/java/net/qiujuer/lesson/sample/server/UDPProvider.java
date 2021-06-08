@@ -50,7 +50,6 @@ class UDPProvider {
                 DatagramPacket receivePack = new DatagramPacket(buffer, buffer.length);
 
                 while (!done) {
-
                     // 接收
                     ds.receive(receivePack);
 

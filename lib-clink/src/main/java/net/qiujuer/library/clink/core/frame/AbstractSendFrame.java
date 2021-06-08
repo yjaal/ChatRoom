@@ -66,4 +66,8 @@ public abstract class AbstractSendFrame extends Frame {
         return headerRemaining < Frame.FRAME_HEADER_LEN;
     }
 
+    @Override
+    public int getConsumableLen() {
+        return headerRemaining + bodyRemaining;
+    }
 }

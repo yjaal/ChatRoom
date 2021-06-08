@@ -151,6 +151,15 @@ public class IoArgs {
         return size;
     }
 
+    public int writeTo(byte[] bytes, int offset) {
+        int size = buffer.remaining();
+        if (size <= 0) {
+            return 0;
+        }
+        buffer.get(bytes, offset, size);
+        return size;
+    }
+
     /**
      * 用户取消后填充假数据
      */
@@ -159,6 +168,15 @@ public class IoArgs {
         // buffer需要位移，冒充填充了数据
         buffer.position(buffer.position() + fillSize);
         return fillSize;
+    }
+
+    /**
+     * 将args中的一部分缓存清空，表示不读取这部分数据
+     */
+    public int setEmpty(int size) {
+        int emptySize = Math.min(size, buffer.remaining());
+        buffer.position(buffer.position() + emptySize);
+        return emptySize;
     }
 
 

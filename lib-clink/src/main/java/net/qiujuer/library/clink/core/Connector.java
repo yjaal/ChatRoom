@@ -112,7 +112,6 @@ public abstract class Connector implements Closeable,
                     return null;
                 default:
                     throw new UnsupportedOperationException("发送数据的格式不支持");
-
             }
         }
 
@@ -120,8 +119,5 @@ public abstract class Connector implements Closeable,
         public void onReceivePacketCompleted(ReceivePacket packet) {
             onReceivedPacket(packet);
         }
-
     };
-
-
 }

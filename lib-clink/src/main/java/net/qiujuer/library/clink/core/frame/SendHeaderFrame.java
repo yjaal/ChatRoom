@@ -16,7 +16,7 @@ import net.qiujuer.library.clink.core.SendPacket;
  **/
 public class SendHeaderFrame extends AbstractSendPacketFrame{
 
-    private static final int PACKET_HEADER_FRAME_MIN_LENGTH = 6;
+    public static final int PACKET_HEADER_FRAME_MIN_LENGTH = 6;
 
     private final byte[] body;
 

@@ -33,7 +33,7 @@ public class Server {
             return;
         }
 
-        // 启动一个UDP服务，用户监听广播消息，监听30401
+        // 启动一个UDP服务，用户监听广播消息，监听30201
         UDPProvider.start(TCPConstants.PORT_SERVER);
 
         // 读取键盘输入，这里可以发送群消息

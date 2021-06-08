@@ -108,4 +108,6 @@ public abstract class Frame {
      * <p> 如果是一个64M到文件，按照每帧64K的大小，需要1024（数据）+1（头）个帧，不需要一次性生成
      */
     public abstract Frame nextFrame();
+
+    public abstract int getConsumableLen();
 }
