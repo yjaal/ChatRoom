@@ -54,7 +54,8 @@ public abstract class Connector implements Closeable,
         sendDispatcher = new AsyncSendDispatcher(sender);
         receiveDispatcher = new AsyncReceiveDispatcher(receiver, receivePacketCallback);
 
-        // 启动接收
+        // 启动接收，这里会对接收回调receivePacketCallback注册，当监听到有数据过来时，则会自动启动接收
+        // 而发送回调则不同，发送回调是在具体发送时刻才会进行注册
         receiveDispatcher.start();
     }
 

@@ -6,6 +6,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -62,19 +63,27 @@ public class IoSelectorProvider implements IoProvider {
         Thread thread = new Thread("Clink IoSelectorProvider ReadSelector Thread") {
             @Override
             public void run() {
+                AtomicBoolean locker = inRegInput;
                 while (!isClosed.get()) {
                     try {
                         if (readSelector.select() == 0) {
                             waitSelection(inRegInput);
                             continue;
+                        } else if (locker.get()) {
+                            // 等待当前的操作执行完再继续
+                            waitSelection(inRegInput);
                         }
+                        // 这里SelectionKey可能被取消了，所以使用迭代器
                         Set<SelectionKey> selectionKeys = readSelector.selectedKeys();
-                        for (SelectionKey selectionKey : selectionKeys) {
+                        Iterator<SelectionKey> iter = selectionKeys.iterator();
+                        while (iter.hasNext()) {
+                            SelectionKey selectionKey = iter.next();
                             if (selectionKey.isValid()) {
-                                handleSelection(selectionKey, SelectionKey.OP_READ, inputCallbackMap, inputHandlePool);
+                                handleSelection(selectionKey, SelectionKey.OP_READ,
+                                    inputCallbackMap, inputHandlePool);
                             }
+                            iter.remove();
                         }
-                        selectionKeys.clear();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -89,19 +98,27 @@ public class IoSelectorProvider implements IoProvider {
         Thread thread = new Thread("Clink IoSelectorProvider WriteSelector Thread") {
             @Override
             public void run() {
+                AtomicBoolean locker = inRegInput;
                 while (!isClosed.get()) {
                     try {
                         if (writeSelector.select() == 0) {
                             waitSelection(inRegOutput);
                             continue;
+                        } else if (locker.get()) {
+                            // 等待当前的操作执行完再继续
+                            waitSelection(inRegOutput);
                         }
+                        // 这里SelectionKey可能被取消了，所以使用迭代器
                         Set<SelectionKey> selectionKeys = writeSelector.selectedKeys();
-                        for (SelectionKey selectionKey : selectionKeys) {
+                        Iterator<SelectionKey> iter = selectionKeys.iterator();
+                        while (iter.hasNext()) {
+                            SelectionKey selectionKey = iter.next();
                             if (selectionKey.isValid()) {
-                                handleSelection(selectionKey, SelectionKey.OP_WRITE, outputCallbackMap, outputHandlePool);
+                                handleSelection(selectionKey, SelectionKey.OP_WRITE,
+                                    outputCallbackMap, outputHandlePool);
                             }
+                            iter.remove();
                         }
-                        selectionKeys.clear();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -115,7 +132,8 @@ public class IoSelectorProvider implements IoProvider {
     @Override
     public boolean registerInput(SocketChannel channel, HandleInputCallback callback) {
         // 这里首先要进行注册
-        return registerSelection(channel, readSelector, SelectionKey.OP_READ, inRegInput, inputCallbackMap, callback) != null;
+        return registerSelection(channel, readSelector, SelectionKey.OP_READ, inRegInput,
+            inputCallbackMap, callback) != null;
     }
 
     @Override
@@ -165,7 +183,8 @@ public class IoSelectorProvider implements IoProvider {
         }
     }
 
-    private static SelectionKey registerSelection(SocketChannel channel, Selector selector, int regOps,
+    private static SelectionKey registerSelection(SocketChannel channel, Selector selector,
+        int regOps,
         AtomicBoolean locker, HashMap<SelectionKey, Runnable> map, Runnable runnable) {
 
         System.out.println("注册相关selector并将回调对象存入缓存，以便线程池执行");
@@ -227,17 +246,18 @@ public class IoSelectorProvider implements IoProvider {
     /**
      * 处理具体的读操作
      *
-     * @param key              开关
-     * @param opRead           开关读写标志
-     * @param inputCallbackMap 回调map
-     * @param inputHandlePool  读操作线程池
+     * @param key             开关
+     * @param op              开关读写标志
+     * @param callbackMap     回调map
+     * @param inputHandlePool 读操作线程池
      */
-    private void handleSelection(SelectionKey key, int opRead, HashMap<SelectionKey, Runnable> inputCallbackMap,
+    private void handleSelection(SelectionKey key, int op,
+        HashMap<SelectionKey, Runnable> callbackMap,
         ExecutorService inputHandlePool) {
         // 重点：这里通过状态互消取消当前selector的监听
         // 或者用key.cancel()
-        key.interestOps(key.readyOps() & ~opRead);
-        Runnable runnable = inputCallbackMap.get(key);
+        key.interestOps(key.readyOps() & ~op);
+        Runnable runnable = callbackMap.get(key);
         if (!Objects.isNull(runnable) && !inputHandlePool.isShutdown()) {
             // 线程池异步调度
             inputHandlePool.execute(runnable);

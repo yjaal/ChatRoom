@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import net.qiujuer.lesson.sample.client.bean.ServerInfo;
 import net.qiujuer.lesson.sample.foo.Foo;
+import net.qiujuer.library.clink.core.IoContext;
 
 /**
  * <p>测试类，可以使用JvirtualVM进行测试
@@ -31,29 +32,27 @@ public class ClientTest {
         int size = 0;
         List<TCPClient> tcpClients = new ArrayList<>(size);
         // 创建多个客户端
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 100; i++) {
             try {
                 TCPClient tcpClient = TCPClient.startWith(info, cachePath);
                 if (Objects.isNull(tcpClient)) {
-                    System.out.println("连接异常");
-                    continue;
+                    // 当连接异常的时候其实后面的连接出现异常的概率也非常大，这里改为直接抛异常
+//                    System.out.println("连接异常");
+//                    continue;
+                    throw new NullPointerException();
                 }
                 tcpClients.add(tcpClient);
                 System.out.println("连接成功" + (++size));
-            } catch (IOException e) {
+            } catch (IOException | NullPointerException e) {
                 System.out.println("连接异常");
-            }
-            try {
-                Thread.sleep(20);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                break;
             }
         }
         System.in.read();
         Thread thread = new Thread(() -> {
             while (!done) {
                 tcpClients.forEach(tcpClient -> {
-                    tcpClient.send("");
+                    tcpClient.send("Hello~");
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
@@ -72,6 +71,9 @@ public class ClientTest {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        tcpClients.forEach(tcpClient -> tcpClient.exit());
+        // 客户端结束操作
+        tcpClients.forEach(TCPClient::exit);
+
+        IoContext.close();
     }
 }
