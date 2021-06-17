@@ -89,6 +89,10 @@ class AsyncPacketWriter implements Closeable {
         int len = frame.getBodyLen();
         synchronized (packetMap) {
             PacketModel packetModel = packetMap.get(identifier);
+            // map在关闭的时候可能被清空，而清空后仍然是可以拿到锁的
+            if (packetModel == null) {
+                return;
+            }
             packetModel.unReceivedLen -= len;
             if (packetModel.unReceivedLen <= 0) {
                 provider.completedPacket(packetModel.packet, true);

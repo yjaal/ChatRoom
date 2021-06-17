@@ -126,6 +126,7 @@ public class AsyncPacketReader implements Closeable {
                 SendPacket packet = ((AbstractSendPacketFrame) frame).getPacket();
                 provider.completedPacket(packet, false);
             }
+            node = node.next;
         }
 
         nodeSize = 0;
@@ -139,6 +140,7 @@ public class AsyncPacketReader implements Closeable {
         }
         try {
             // 如果Frame不为空，则需要填充数据
+            // 这里可能出现多个线程获取到同一个帧的并发问题，这里通过改造发送AsyncSendDispatcher#send
             if (currentFrame.handle(args)) {
                 // 如果已经全部消费完，尝试去构建后面一帧
                 Frame nextFrame = currentFrame.nextFrame();

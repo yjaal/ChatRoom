@@ -71,9 +71,14 @@ public class AsyncReceiveDispatcher implements ReceiveDispatcher, IOArgsEventPro
 
     @Override
     public void onConsumeCompleted(IoArgs args) {
+        // 已经被关闭了
+        if (isClosed.get()) {
+            return;
+        }
+        // 有数据则循环消费
         do {
             writer.consumeIoArgs(args);
-        } while (args.remained());
+        } while (args.remained() && !isClosed.get());
 
         // 继续接收
         registerReceive();

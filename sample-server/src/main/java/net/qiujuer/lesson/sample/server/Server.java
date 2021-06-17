@@ -41,7 +41,7 @@ public class Server {
         String str;
         do {
             str = bufferedReader.readLine();
-            if ("00bye00".equalsIgnoreCase(str)) {
+            if (null == str || str.length() == 0 || "00bye00".equalsIgnoreCase(str)) {
                 break;
             }
             // 向所有的TCP连接发送消息

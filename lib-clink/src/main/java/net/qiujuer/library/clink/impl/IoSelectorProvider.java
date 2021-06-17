@@ -159,7 +159,7 @@ public class IoSelectorProvider implements IoProvider {
                 }
 
                 return key;
-            } catch (ClosedChannelException e) {
+            } catch (ClosedChannelException | CancelledKeyException | ClosedSelectorException e) {
                 return null;
             } finally {
                 // 接触锁定
