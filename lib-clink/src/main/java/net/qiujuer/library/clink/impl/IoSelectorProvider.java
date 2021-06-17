@@ -1,7 +1,9 @@
 package net.qiujuer.library.clink.impl;
 
 import java.io.IOException;
+import java.nio.channels.CancelledKeyException;
 import java.nio.channels.ClosedChannelException;
+import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -60,72 +62,16 @@ public class IoSelectorProvider implements IoProvider {
      * 这里可以看到我们使用一个单线程处理具体的管道开关获取，然后使用线程池处理具体的读操作，相当于启动线程开始监听
      */
     private void startRead() {
-        Thread thread = new Thread("Clink IoSelectorProvider ReadSelector Thread") {
-            @Override
-            public void run() {
-                AtomicBoolean locker = inRegInput;
-                while (!isClosed.get()) {
-                    try {
-                        if (readSelector.select() == 0) {
-                            waitSelection(inRegInput);
-                            continue;
-                        } else if (locker.get()) {
-                            // 等待当前的操作执行完再继续
-                            waitSelection(inRegInput);
-                        }
-                        // 这里SelectionKey可能被取消了，所以使用迭代器
-                        Set<SelectionKey> selectionKeys = readSelector.selectedKeys();
-                        Iterator<SelectionKey> iter = selectionKeys.iterator();
-                        while (iter.hasNext()) {
-                            SelectionKey selectionKey = iter.next();
-                            if (selectionKey.isValid()) {
-                                handleSelection(selectionKey, SelectionKey.OP_READ,
-                                    inputCallbackMap, inputHandlePool);
-                            }
-                            iter.remove();
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        };
-        thread.setPriority(Thread.MAX_PRIORITY);
+        Thread thread = new SelectorThread("Clink IoSelectorProvider ReadSelector Thread",
+            inRegInput, readSelector, inputCallbackMap, inputHandlePool, isClosed,
+            SelectionKey.OP_READ);
         thread.start();
     }
 
     private void startWrite() {
-        Thread thread = new Thread("Clink IoSelectorProvider WriteSelector Thread") {
-            @Override
-            public void run() {
-                AtomicBoolean locker = inRegInput;
-                while (!isClosed.get()) {
-                    try {
-                        if (writeSelector.select() == 0) {
-                            waitSelection(inRegOutput);
-                            continue;
-                        } else if (locker.get()) {
-                            // 等待当前的操作执行完再继续
-                            waitSelection(inRegOutput);
-                        }
-                        // 这里SelectionKey可能被取消了，所以使用迭代器
-                        Set<SelectionKey> selectionKeys = writeSelector.selectedKeys();
-                        Iterator<SelectionKey> iter = selectionKeys.iterator();
-                        while (iter.hasNext()) {
-                            SelectionKey selectionKey = iter.next();
-                            if (selectionKey.isValid()) {
-                                handleSelection(selectionKey, SelectionKey.OP_WRITE,
-                                    outputCallbackMap, outputHandlePool);
-                            }
-                            iter.remove();
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        };
-        thread.setPriority(Thread.MAX_PRIORITY);
+        Thread thread = new SelectorThread("Clink IoSelectorProvider WriteSelector Thread",
+            inRegOutput, writeSelector, outputCallbackMap, outputHandlePool, isClosed,
+            SelectionKey.OP_WRITE);
         thread.start();
     }
 
@@ -145,12 +91,12 @@ public class IoSelectorProvider implements IoProvider {
 
     @Override
     public void unRegisterInput(SocketChannel channel) {
-        unRegisterSelection(channel, readSelector, inputCallbackMap);
+        unRegisterSelection(channel, readSelector, inputCallbackMap, inRegInput);
     }
 
     @Override
     public void unRegisterOutput(SocketChannel channel) {
-        unRegisterSelection(channel, writeSelector, outputCallbackMap);
+        unRegisterSelection(channel, writeSelector, outputCallbackMap, inRegOutput);
     }
 
     @Override
@@ -160,9 +106,8 @@ public class IoSelectorProvider implements IoProvider {
             outputHandlePool.shutdown();
             inputCallbackMap.clear();
             outputCallbackMap.clear();
-            readSelector.wakeup();
-            writeSelector.wakeup();
 
+            // Selector在调用close对时候会自动进行唤醒操作
             CloseUtils.close(readSelector, writeSelector);
         }
     }
@@ -230,15 +175,29 @@ public class IoSelectorProvider implements IoProvider {
     }
 
     private static void unRegisterSelection(SocketChannel channel, Selector selector,
-        HashMap<SelectionKey, Runnable> map) {
-        if (channel.isRegistered()) {
-            SelectionKey key = channel.keyFor(selector);
-            if (!Objects.isNull(key)) {
-                // 取消监听的方法，这里由于将读写操作分开了，所以这种取消方式也是可行的
-                // 否则必须用下面的那种方法，因为cancel是取消所有事件
-                key.cancel();
-                map.remove(key);
-                selector.wakeup();
+        HashMap<SelectionKey, Runnable> map, AtomicBoolean locker) {
+        synchronized (locker) {
+            // 在selector遍历SelectionKey集合的时候可能有其他线程正在对集合做变更，此时应该
+            // locker设置为true，表明其他线程需要等待，同时唤醒Selector让其立即返回
+            locker.set(true);
+            selector.wakeup();
+            try {
+                if (channel.isRegistered()) {
+                    SelectionKey key = channel.keyFor(selector);
+                    if (!Objects.isNull(key)) {
+                        // 取消监听的方法，这里由于将读写操作分开了，所以这种取消方式也是可行的
+                        // 否则必须用下面的那种方法，因为cancel是取消所有事件
+                        key.cancel();
+                        map.remove(key);
+                    }
+                }
+            } finally {
+                locker.set(false);
+                try {
+                    locker.notifyAll();
+                } catch (Exception ignored) {
+
+                }
             }
         }
     }
@@ -251,12 +210,19 @@ public class IoSelectorProvider implements IoProvider {
      * @param callbackMap     回调map
      * @param inputHandlePool 读操作线程池
      */
-    private void handleSelection(SelectionKey key, int op,
-        HashMap<SelectionKey, Runnable> callbackMap,
-        ExecutorService inputHandlePool) {
-        // 重点：这里通过状态互消取消当前selector的监听
-        // 或者用key.cancel()
-        key.interestOps(key.readyOps() & ~op);
+    private static void handleSelection(SelectionKey key, int op,
+        HashMap<SelectionKey, Runnable> callbackMap, ExecutorService inputHandlePool,
+        AtomicBoolean locker) {
+        synchronized (locker) {
+            // 重点：这里通过状态互消取消当前selector的监听
+            // 或者用key.cancel()
+            try {
+                // 在对key做变更对时候可能key已经被取消关闭了
+                key.interestOps(key.readyOps() & ~op);
+            } catch (CancelledKeyException e) {
+                return;
+            }
+        }
         Runnable runnable = callbackMap.get(key);
         if (!Objects.isNull(runnable) && !inputHandlePool.isShutdown()) {
             // 线程池异步调度
@@ -289,6 +255,63 @@ public class IoSelectorProvider implements IoProvider {
                 t.setPriority(Thread.NORM_PRIORITY);
             }
             return t;
+        }
+    }
+
+    static class SelectorThread extends Thread {
+
+        private final AtomicBoolean locker;
+        private final Selector selector;
+        private final HashMap<SelectionKey, Runnable> callbackMap;
+        private final ExecutorService pool;
+        private final AtomicBoolean isClosed;
+        private final int keyOps;
+
+        public SelectorThread(String name, AtomicBoolean locker, Selector selector,
+            HashMap<SelectionKey, Runnable> callbackMap, ExecutorService pool,
+            AtomicBoolean isClosed, int keyOps) {
+            super(name);
+            this.locker = locker;
+            this.selector = selector;
+            this.callbackMap = callbackMap;
+            this.pool = pool;
+            this.isClosed = isClosed;
+            this.keyOps = keyOps;
+        }
+
+        @Override
+        public void run() {
+            super.run();
+            AtomicBoolean locker = this.locker;
+            AtomicBoolean isClosed = this.isClosed;
+            Selector selector = this.selector;
+            int keyOps = this.keyOps;
+            while (!isClosed.get()) {
+                try {
+                    if (selector.select() == 0) {
+                        waitSelection(locker);
+                        continue;
+                    } else if (locker.get()) {
+                        // 等待当前的操作执行完再继续
+                        waitSelection(locker);
+                    }
+                    // 这里SelectionKey可能被取消了，所以使用迭代器
+                    Set<SelectionKey> selectionKeys = selector.selectedKeys();
+                    Iterator<SelectionKey> iter = selectionKeys.iterator();
+                    while (iter.hasNext()) {
+                        SelectionKey selectionKey = iter.next();
+                        if (selectionKey.isValid()) {
+                            handleSelection(selectionKey, keyOps, callbackMap, pool, locker);
+                        }
+                        iter.remove();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (ClosedSelectorException e) {
+                    // Selector被关闭时做其他操作会抛出此异常，此时退出循环
+                    break;
+                }
+            }
         }
     }
 }
