@@ -9,7 +9,6 @@ import java.nio.channels.SocketChannel;
 import net.qiujuer.lesson.sample.client.bean.ServerInfo;
 import net.qiujuer.lesson.sample.foo.Foo;
 import net.qiujuer.library.clink.core.Connector;
-import net.qiujuer.library.clink.core.Packet;
 import net.qiujuer.library.clink.core.ReceivePacket;
 import net.qiujuer.library.clink.utils.CloseUtils;
 
@@ -43,7 +42,6 @@ public class TCPClient extends Connector {
         try {
             return new TCPClient(socketChannel, cachePath);
         } catch (Exception e) {
-            System.out.println("连接异常");
             CloseUtils.close(socketChannel);
         }
         return null;
@@ -52,10 +50,12 @@ public class TCPClient extends Connector {
     @Override
     protected void onReceivedPacket(ReceivePacket packet) {
         super.onReceivedPacket(packet);
+        /*
         if (packet.type() == Packet.TYPE_MEMORY_STRING) {
             String msg = (String) packet.entity();
-            System.out.println(key.toString() + ":" + msg);
-        }
+            // 这个输出会影响性能
+//            System.out.println(key.toString() + ":" + msg);
+        }*/
     }
 
     @Override

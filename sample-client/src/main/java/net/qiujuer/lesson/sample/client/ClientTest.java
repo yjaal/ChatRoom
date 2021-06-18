@@ -8,6 +8,7 @@ import java.util.Objects;
 import net.qiujuer.lesson.sample.client.bean.ServerInfo;
 import net.qiujuer.lesson.sample.foo.Foo;
 import net.qiujuer.library.clink.core.IoContext;
+import net.qiujuer.library.clink.impl.IoSelectorProvider;
 
 /**
  * <p>测试类，可以使用JvirtualVM进行测试
@@ -20,6 +21,8 @@ public class ClientTest {
     public static void main(String[] args) throws IOException {
 
         File cachePath = Foo.getCacheDir("client/test");
+        IoContext.setup().ioProvider(new IoSelectorProvider()).start();
+
         // 启动UDP搜索服务，发送广播消息
         ServerInfo info = UDPSearcher.searchServer(10000);
         System.out.println("Server:" + info);
@@ -30,9 +33,9 @@ public class ClientTest {
 
         // 当前的连接数量
         int size = 0;
-        List<TCPClient> tcpClients = new ArrayList<>(size);
+        List<TCPClient> tcpClients = new ArrayList<>(4);
         // 创建多个客户端
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 200; i++) {
             try {
                 TCPClient tcpClient = TCPClient.startWith(info, cachePath);
                 if (Objects.isNull(tcpClient)) {
@@ -54,7 +57,7 @@ public class ClientTest {
                 tcpClients.forEach(tcpClient -> {
                     tcpClient.send("Hello~");
                     try {
-                        Thread.sleep(1000);
+                        Thread.sleep(1500);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }

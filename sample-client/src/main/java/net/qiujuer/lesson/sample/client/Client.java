@@ -21,7 +21,6 @@ public class Client {
 
     public static void main(String[] args) throws IOException {
         File cachePath = Foo.getCacheDir("client");
-
         IoContext.setup().ioProvider(new IoSelectorProvider()).start();
 
         // 启动UDP搜索服务，发送广播消息

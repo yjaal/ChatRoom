@@ -48,9 +48,9 @@ public class IoSelectorProvider implements IoProvider {
         readSelector = Selector.open();
         writeSelector = Selector.open();
 
-        inputHandlePool = Executors.newFixedThreadPool(4,
+        inputHandlePool = Executors.newFixedThreadPool(20,
             new IoProviderThreadFactory("IoProvider-Input-Thread-"));
-        outputHandlePool = Executors.newFixedThreadPool(4,
+        outputHandlePool = Executors.newFixedThreadPool(20,
             new IoProviderThreadFactory("IoProvider-Output-Thread-"));
 
         // 开始输出输入的监听，启动读写，后面直接从map中获取相关线程进行执行

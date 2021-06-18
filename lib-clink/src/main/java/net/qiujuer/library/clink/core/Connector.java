@@ -83,9 +83,9 @@ public abstract class Connector implements Closeable,
     }
 
     protected void onReceivedPacket(ReceivePacket packet) {
-        System.out.println(
-            "收到消息--> " + key.toString() + ": [New Packet]-Type:" + packet.type() + ", [Len:"
-                + packet.length + "]");
+//        System.out.println(
+//            "收到消息--> " + key.toString() + ": [New Packet]-Type:" + packet.type() + ", [Len:"
+//                + packet.length + "]");
     }
 
     @Override

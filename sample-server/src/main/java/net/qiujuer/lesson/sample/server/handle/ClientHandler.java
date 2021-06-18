@@ -58,7 +58,8 @@ public class ClientHandler extends Connector {
         super.onReceivedPacket(packet);
         if (packet.type() == Packet.TYPE_MEMORY_STRING) {
             String msg = (String) packet.entity();
-            System.out.println(key.toString() + ":" + msg);
+            // 这里的屏幕打印会影响性能
+//            System.out.println(key.toString() + ":" + msg);
             // 转发
             clientHandlerCallback.onNewMsgArrived(this, msg);
         }
