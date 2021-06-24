@@ -30,6 +30,10 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
 
     private final File cachePath;
 
+    // 未同步，可能不是那么准确
+    private long receiveSize;
+    private long sendSize;
+
     public TCPServer(int port, File cachePath) {
         this.cachePath = cachePath;
         this.port = port;
@@ -85,6 +89,8 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
         for (ClientHandler clientHandler : clientHandlerList) {
             clientHandler.send(str);
         }
+        // 发送数量增加
+        sendSize += clientHandlerList.size();
     }
 
     @Override
@@ -95,7 +101,8 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
     @Override
     public void onNewMsgArrived(final ClientHandler handler, final String msg) {
         // 这里新起一个线程执行,这里就是一次转发，先接收到消息，然后转发到其他客户端
-        System.out.println("服务端对其他客户端转发数据");
+//        System.out.println("服务端对其他客户端转发数据");
+        receiveSize++;
         forwardingThreadPool.execute(() -> {
             synchronized (TCPServer.this) {
                 for (ClientHandler clientHandler : clientHandlerList) {
@@ -105,9 +112,19 @@ public class TCPServer implements ClientHandler.ClientHandlerCallback {
                         continue;
                     }
                     clientHandler.send(msg);
+                    sendSize++;
                 }
             }
         });
+    }
+
+    Object[] getStatusString() {
+
+        return new String[]{
+            "客户端数量: " + clientHandlerList.size(),
+            "发送数量: " + sendSize,
+            "接收数量: " + receiveSize
+        };
     }
 
     private class ClientListener extends Thread {

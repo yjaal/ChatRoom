@@ -57,6 +57,6 @@ public class Server {
         tcpServer.stop();
 
         IoContext.close();
-        gui.
+        gui.doDismiss();
     }
 }

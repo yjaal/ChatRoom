@@ -58,12 +58,28 @@ public class FooGui extends JFrame {
     }
 
     public void doShow() {
-        javax.swing.SwingUtilities.invokeLater(() ->{
-
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            // 显示窗口
+            pack();
+            setVisible(true);
+            // 定时器启动
+            timer.start();
         });
     }
 
+    public void doDismiss() {
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            // 关闭定时器
+            timer.stop();
+            // 销毁界面
+            setVisible(false);
+            dispose();
+        });
+    }
 
+    public void update(final String text) {
+        javax.swing.SwingUtilities.invokeLater(() -> label.setText(text));
+    }
 
     public interface Callback {
 
