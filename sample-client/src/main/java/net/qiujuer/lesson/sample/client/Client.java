@@ -1,6 +1,8 @@
 package net.qiujuer.lesson.sample.client;
 
 
+import static net.qiujuer.lesson.sample.foo.Foo.COMMAND_EXIT;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -57,8 +59,11 @@ public class Client {
             // 键盘读取一行
             String str = input.readLine();
             // 直接停止
-            if (null == str || str.length() == 0 || "00bye00".equalsIgnoreCase(str)) {
+            if (null == str || COMMAND_EXIT.equalsIgnoreCase(str)) {
                 break;
+            }
+            if (str.length() == 0) {
+                continue;
             }
             // 自定义文件发送格式 --file url
             if (str.startsWith("--file")) {

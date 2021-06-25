@@ -65,6 +65,10 @@ public class ClientHandler extends Connector {
         }
     }
 
+    public String getClientInfo() {
+        return clientInfo;
+    }
+
     private void exitBySelf() {
         exit();
         clientHandlerCallback.onSelfClosed(this);

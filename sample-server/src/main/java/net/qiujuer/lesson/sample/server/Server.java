@@ -1,5 +1,7 @@
 package net.qiujuer.lesson.sample.server;
 
+import static net.qiujuer.lesson.sample.foo.Foo.COMMAND_EXIT;
+
 import java.io.File;
 import net.qiujuer.lesson.sample.foo.Foo;
 import net.qiujuer.lesson.sample.foo.FooGui;
@@ -46,8 +48,11 @@ public class Server {
         String str;
         do {
             str = bufferedReader.readLine();
-            if (null == str || str.length() == 0 || "00bye00".equalsIgnoreCase(str)) {
+            if (null == str || COMMAND_EXIT.equalsIgnoreCase(str)) {
                 break;
+            }
+            if (str.length() == 0) {
+                continue;
             }
             // 向所有的TCP连接发送消息
             tcpServer.broadcast(str);

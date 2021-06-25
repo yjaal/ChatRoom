@@ -8,6 +8,8 @@ public class Foo {
 
     private static final String CACHE_DIR = "cache";
 
+    public static final String COMMAND_EXIT = "00bye00";
+
     /**
      * 创建一个缓存的目录
      */
