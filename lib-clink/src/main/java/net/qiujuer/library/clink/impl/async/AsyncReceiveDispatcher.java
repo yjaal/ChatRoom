@@ -59,9 +59,15 @@ public class AsyncReceiveDispatcher implements ReceiveDispatcher, IOArgsEventPro
         }
     }
 
+    /**
+     * 网络接收准备就绪，此时可以读取数据，需要返回一个容器用于容纳数据
+     */
     @Override
     public IoArgs provideIoArgs() {
-        return writer.takeIoArgs();
+        IoArgs ioArgs = writer.takeIoArgs();
+        // 最开始写入之前需要调用开始写入方法
+        ioArgs.startWriting();
+        return ioArgs;
     }
 
     @Override
@@ -75,6 +81,9 @@ public class AsyncReceiveDispatcher implements ReceiveDispatcher, IOArgsEventPro
         if (isClosed.get()) {
             return;
         }
+        // 消费数据之前标识args数据填充完成，改变未可读取数据状态，然后进行消费
+        args.finishWriting();
+
         // 有数据则循环消费
         do {
             writer.consumeIoArgs(args);

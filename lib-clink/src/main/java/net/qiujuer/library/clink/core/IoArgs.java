@@ -54,18 +54,17 @@ public class IoArgs {
      * 从channel中读数据
      */
     public int readFrom(SocketChannel channel) throws IOException {
-        startWriting();
         // 当前读取到了多少数据，注意这里应该读取多少数据是由limit控制的，我们可以设置每次读取的数据量
         int bytesProduced = 0;
-        while (buffer.hasRemaining()) {
-            int len = channel.read(buffer);
+        int len;
+        do {
+            len = channel.read(buffer);
             if (len < 0) {
-                throw new EOFException();
+                throw new EOFException("Cannot read any data with:" + channel);
             }
             bytesProduced += len;
-        }
+        } while (buffer.hasRemaining() && len != 0);
 
-        finishWriting();
         return bytesProduced;
     }
 
@@ -73,16 +72,18 @@ public class IoArgs {
      * 写数据到channel中
      */
     public int writeTo(SocketChannel channel) throws IOException {
-
+        ByteBuffer buffer = this.buffer;
         // 当前读取到了多少数据，注意这里应该读取多少数据是由limit控制的，我们可以设置每次读取的数据量
         int bytesProduced = 0;
-        while (buffer.hasRemaining()) {
-            int len = channel.write(buffer);
+        int len;
+        do {
+            len = channel.write(buffer);
             if (len < 0) {
-                throw new EOFException();
+                throw new EOFException("Current write any data with:" + channel);
             }
             bytesProduced += len;
-        }
+        } while (buffer.hasRemaining() && len != 0);
+
         return bytesProduced;
     }
 
