@@ -131,7 +131,7 @@ public class TCPServer implements AcceptListener, Group.GroupMsgAdapter {
 
             clientHandler.getCloseChain().appendLast(new RemoveQueueOnCloseConnect());
             // 这里相当于把这个连接保存在本地内存中
-            synchronized (TCPServer.this) {
+            synchronized (clientHandlerList) {
                 clientHandlerList.add(clientHandler);
                 System.out.println("当前客户端数量:" + clientHandlerList.size());
             }
