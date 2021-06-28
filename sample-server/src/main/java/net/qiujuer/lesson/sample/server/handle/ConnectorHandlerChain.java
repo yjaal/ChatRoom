@@ -41,7 +41,7 @@ public abstract class ConnectorHandlerChain<Model> {
         }
 
         // 子节点的消费情况
-        boolean childConsumeRes = next != null && next.handle(handler, model);
+        boolean childConsumeRes = (next != null && next.handle(handler, model));
         if (childConsumeRes) {
             return true;
         }
@@ -59,7 +59,7 @@ public abstract class ConnectorHandlerChain<Model> {
             if (next == null) {
                 return false;
             } else if (next.getClass().equals(clazz)) {
-                next = null;
+                this.next = next.next;
                 return true;
             } else {
                 return next.remove(clazz);
@@ -73,8 +73,6 @@ public abstract class ConnectorHandlerChain<Model> {
      * 刚开始自己没有消费，然后后面节点也没有消费，则再次消费，比如此客户端不在任何一个群里
      */
     protected boolean consumeAgain(ClientHandler handler, Model model) {
-
         return false;
     }
-
 }

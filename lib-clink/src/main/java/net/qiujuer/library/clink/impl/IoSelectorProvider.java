@@ -131,8 +131,7 @@ public class IoSelectorProvider implements IoProvider {
     private static SelectionKey registerSelection(SocketChannel channel, Selector selector,
         int regOps,
         AtomicBoolean locker, HashMap<SelectionKey, Runnable> map, Runnable runnable) {
-
-        System.out.println("注册相关selector并将回调对象存入缓存，以便线程池执行");
+//        System.out.println("注册相关selector并将回调对象存入缓存，以便线程池执行");
         synchronized (locker) {
             // 设置锁定状态
             locker.set(true);
@@ -142,7 +141,7 @@ public class IoSelectorProvider implements IoProvider {
                 selector.wakeup();
                 SelectionKey key = null;
                 if (channel.isRegistered()) {
-                    System.out.println("当前SelectionKey已注册过，这里修改其开关值");
+//                    System.out.println("当前SelectionKey已注册过，这里修改其开关值");
                     // 查询是否已经注册过
                     key = channel.keyFor(selector);
                     // 已经注册过，那么只需要改变监听值就可以达到监听效果，不需要再次注册
@@ -152,7 +151,7 @@ public class IoSelectorProvider implements IoProvider {
                 }
                 // 表明之前没有注册过，这里进行注册
                 if (Objects.isNull(key)) {
-                    System.out.println("当前SelectionKey还未注册过，这里进行注册");
+//                    System.out.println("当前SelectionKey还未注册过，这里进行注册");
                     key = channel.register(selector, regOps);
                     // 注册回调，注意，这里将回调存入了map，后面读取线程池inputHandlePool会从中取出执行
                     map.put(key, runnable);

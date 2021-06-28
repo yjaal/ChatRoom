@@ -17,8 +17,7 @@ import net.qiujuer.library.clink.impl.async.AsyncSendDispatcher;
 /**
  * 用于标识服务端和客户端的某个连接
  */
-public abstract class Connector implements Closeable,
-    SocketChannelAdapter.OnChannelStatusChangedListener {
+public abstract class Connector implements Closeable, SocketChannelAdapter.OnChannelStatusChangedListener {
 
     /**
      * 这里用于标识连接的唯一性
@@ -121,4 +120,8 @@ public abstract class Connector implements Closeable,
             onReceivedPacket(packet);
         }
     };
+
+    public UUID getKey(){
+        return key;
+    }
 }

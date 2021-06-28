@@ -30,11 +30,14 @@ public class ServerAcceptor extends Thread {
         this.selector = Selector.open();
     }
 
+    public Selector getSelector() {
+        return this.selector;
+    }
 
     /**
      * 等待启动
      */
-    private boolean awaitRunning() {
+    public boolean awaitRunning() {
         try {
             latch.await();
         } catch (InterruptedException e) {

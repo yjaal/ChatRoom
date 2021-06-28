@@ -38,7 +38,6 @@ public class AsyncSendDispatcher implements SendDispatcher, IOArgsEventProcessor
     public void send(SendPacket packet) {
         // 将消息存入到队列中
         queue.offer(packet);
-
         // 请求发送
         requestSend();
     }

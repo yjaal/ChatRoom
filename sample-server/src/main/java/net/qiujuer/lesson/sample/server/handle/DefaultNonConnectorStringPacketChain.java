@@ -8,7 +8,7 @@ import net.qiujuer.library.clink.box.StringReceivePacket;
  * @author YJ
  * @date 2021/6/25
  **/
-public class DefaultNonConnectorStringPacketChain extends ConnectorStringPacketChain{
+public class DefaultNonConnectorStringPacketChain extends ConnectorStringPacketChain {
 
     @Override
     protected boolean consume(ClientHandler handler, StringReceivePacket stringReceivePacket) {
