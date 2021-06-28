@@ -10,4 +10,5 @@ public interface Receiver extends Closeable {
 
     boolean postReceiveAsync() throws IOException;
 
+    long getLastReadTime();
 }

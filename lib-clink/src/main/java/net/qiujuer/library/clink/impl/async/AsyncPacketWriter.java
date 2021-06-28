@@ -12,6 +12,7 @@ import net.qiujuer.library.clink.core.IoArgs;
 import net.qiujuer.library.clink.core.ReceivePacket;
 import net.qiujuer.library.clink.core.frame.AbstractReceiveFrame;
 import net.qiujuer.library.clink.core.frame.CancelReceiveFrame;
+import net.qiujuer.library.clink.core.frame.HeartbeatReceiveFrame;
 import net.qiujuer.library.clink.core.frame.ReceiveEntityFrame;
 import net.qiujuer.library.clink.core.frame.ReceiveFrameFactory;
 import net.qiujuer.library.clink.core.frame.ReceiveHeaderFrame;
@@ -113,6 +114,10 @@ class AsyncPacketWriter implements Closeable {
         if (frame instanceof CancelReceiveFrame) {
             this.cancelReceivePacket(frame.getBodyIdentifier());
             return null;
+        } else if (frame instanceof HeartbeatReceiveFrame) {
+            provider.onReceiveHeartbeat();
+            // 如果接收到心跳包，则返回空
+            return null;
         } else if (frame instanceof ReceiveEntityFrame) {
             // 如果是实体帧，则需要获取对应对通道
             WritableByteChannel channel = getPacketChannel(frame.getBodyIdentifier());
@@ -162,6 +167,12 @@ class AsyncPacketWriter implements Closeable {
          * 接收完成
          */
         void completedPacket(ReceivePacket packet, boolean isSucceed);
+
+        /**
+         * 接收到心跳包后进行处理
+         */
+        void onReceiveHeartbeat();
+
     }
 
     /**

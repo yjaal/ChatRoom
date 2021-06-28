@@ -36,6 +36,10 @@ public abstract class Frame {
      * 接收拒绝
      */
     public static final byte TYPE_COMMAND_RECEIVE_REJECT = 42;
+    /**
+     * 心跳包类型
+     */
+    public static final byte TYPE_COMMAND_HEARTBEAT = 81;
 
     public static final byte FLAG_NONE = 0;
 

@@ -42,6 +42,17 @@ public class AsyncSendDispatcher implements SendDispatcher, IOArgsEventProcessor
         requestSend();
     }
 
+    @Override
+    public void sendHeartbeat() {
+        // 如果队列中本身就有数据，那就没必要发送心跳帧了，因为发送数据本身就可以完成心跳的作用
+        if (queue.size() <= 0) {
+            boolean addRes = packetReader.requestSendHeartbeatFrame();
+            if (addRes) {
+                requestSend();
+            }
+        }
+    }
+
     /**
      * 请求网络发送
      */
@@ -112,7 +123,7 @@ public class AsyncSendDispatcher implements SendDispatcher, IOArgsEventProcessor
     }
 
     @Override
-    public void close(){
+    public void close() {
         if (isClosed.compareAndSet(false, true)) {
             // 这里一般是异常导致到关闭
             packetReader.close();

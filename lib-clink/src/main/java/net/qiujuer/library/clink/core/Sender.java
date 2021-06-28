@@ -10,4 +10,5 @@ public interface Sender extends Closeable {
 
     boolean postSendAsync() throws IOException;
 
+    long getLastWriterTime();
 }

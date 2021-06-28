@@ -21,6 +21,10 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
 
     private final SocketChannel channel;
     private final IoProvider ioProvider;
+
+    private volatile long lastReadTime = System.currentTimeMillis();
+    private volatile long lastWriteTime = System.currentTimeMillis();
+
     /**
      * 监听通道关闭，进行回调
      */
@@ -78,7 +82,18 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
         return ioProvider.registerOutput(channel, outputCallback);
     }
 
+    @Override
+    public long getLastWriterTime() {
+        return lastWriteTime;
+    }
+
+    @Override
+    public long getLastReadTime() {
+        return lastReadTime;
+    }
+
     public interface OnChannelStatusChangedListener {
+
         void onChannelClosed(SocketChannel channel);
     }
 
@@ -90,6 +105,7 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
                 return;
             }
 
+            lastReadTime = System.currentTimeMillis();
             IOArgsEventProcessor processor = receiverProcessor;
             if (args == null) {
                 args = processor.provideIoArgs();
@@ -131,6 +147,7 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
             if (isClosed.get()) {
                 return;
             }
+            lastWriteTime = System.currentTimeMillis();
             // 这里的sendProcessor是传入的
             IoArgs.IOArgsEventProcessor processor = sendProcessor;
             if (args == null) {

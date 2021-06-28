@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import net.qiujuer.library.clink.core.IoContext;
 import net.qiujuer.library.clink.impl.IoSelectorProvider;
+import net.qiujuer.library.clink.impl.SchedulerImpl;
 
 /**
  * <p> 由于依赖其他工程，后面需要打成jar包运行
@@ -25,7 +26,9 @@ public class Server {
 
         File cachePath = Foo.getCacheDir("server");
 
-        IoContext.setup().ioProvider(new IoSelectorProvider()).start();
+        IoContext.setup().schedule(new SchedulerImpl(1))
+            .ioProvider(new IoSelectorProvider())
+            .start();
 
         // 启动一个TCP监听服务，监听30401
         TCPServer tcpServer = new TCPServer(TCPConstants.PORT_SERVER, cachePath);
@@ -40,7 +43,7 @@ public class Server {
         UDPProvider.start(TCPConstants.PORT_SERVER);
 
         // 启动Gui界面
-        FooGui gui = new FooGui("Clink-Server", () -> tcpServer.getStatusString());
+        FooGui gui = new FooGui("Clink-Server", tcpServer::getStatusString);
         gui.doShow();
 
         // 读取键盘输入，这里可以发送群消息

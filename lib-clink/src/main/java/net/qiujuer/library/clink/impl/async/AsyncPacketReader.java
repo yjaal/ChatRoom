@@ -9,11 +9,12 @@ import net.qiujuer.library.clink.core.ds.BytePriorityNode;
 import net.qiujuer.library.clink.core.frame.AbstractSendFrame;
 import net.qiujuer.library.clink.core.frame.AbstractSendPacketFrame;
 import net.qiujuer.library.clink.core.frame.CancelSendFrame;
+import net.qiujuer.library.clink.core.frame.HeartbeatSendFrame;
 import net.qiujuer.library.clink.core.frame.SendEntityFrame;
 import net.qiujuer.library.clink.core.frame.SendHeaderFrame;
 
 /**
- * 用于管理分片之后到数据接收
+ * packet转化未帧序列，并进行读取发送的封装管理类
  *
  * @author YJ
  * @date 2021/5/12
@@ -101,6 +102,24 @@ public class AsyncPacketReader implements Closeable {
 
         synchronized (this) {
             return nodeSize != 0;
+        }
+    }
+
+    /**
+     * 请求发送一个心跳帧，理论上来说在一定时间内队列中只应该有一个心跳包
+     */
+    boolean requestSendHeartbeatFrame() {
+        synchronized (this) {
+            for (BytePriorityNode<Frame> curFrame = node; curFrame != null;
+                curFrame = curFrame.next) {
+                Frame frame = curFrame.item;
+                if (frame.getBodyType() == Frame.TYPE_COMMAND_HEARTBEAT) {
+                    return false;
+                }
+            }
+            // 添加一个心跳帧
+            appendNewFrame(new HeartbeatSendFrame());
+            return true;
         }
     }
 

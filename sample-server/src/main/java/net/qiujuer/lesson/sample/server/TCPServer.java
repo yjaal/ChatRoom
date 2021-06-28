@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import net.qiujuer.lesson.sample.foo.Foo;
 import net.qiujuer.lesson.sample.server.ServerAcceptor.AcceptListener;
 import net.qiujuer.lesson.sample.server.handle.ClientHandler;
@@ -19,6 +20,7 @@ import net.qiujuer.lesson.sample.server.handle.ConnectorCloseChain;
 import net.qiujuer.lesson.sample.server.handle.ConnectorStringPacketChain;
 import net.qiujuer.library.clink.box.StringReceivePacket;
 import net.qiujuer.library.clink.core.Connector;
+import net.qiujuer.library.clink.core.schedule.IdleTimeoutScheduleJob;
 import net.qiujuer.library.clink.utils.CloseUtils;
 
 /**
@@ -27,7 +29,7 @@ import net.qiujuer.library.clink.utils.CloseUtils;
 public class TCPServer implements AcceptListener, Group.GroupMsgAdapter {
 
     private final int port;
-    private final List<ClientHandler> clientHandlerList = new ArrayList<>();
+    private final List<ClientHandler> clientHandlers = new ArrayList<>();
     /**
      * 消息转发线程池
      */
@@ -81,12 +83,16 @@ public class TCPServer implements AcceptListener, Group.GroupMsgAdapter {
             acceptor.exit();
         }
 
-        synchronized (clientHandlerList) {
+        // 这里不能直接移除，因为在关闭消费时会移除，如果直接移除，则在关闭当时候会报异常
+        ClientHandler[] clientHandlerArr;
+        synchronized (clientHandlers) {
+            clientHandlerArr = clientHandlers.toArray(new ClientHandler[0]);
+            clientHandlers.clear();
+
             // 这是一个多线程操作，这里使用同步
-            for (ClientHandler clientHandler : clientHandlerList) {
+            for (ClientHandler clientHandler : clientHandlerArr) {
                 clientHandler.exit();
             }
-            clientHandlerList.clear();
         }
         CloseUtils.close(server);
         deliveryPool.shutdown();
@@ -95,8 +101,11 @@ public class TCPServer implements AcceptListener, Group.GroupMsgAdapter {
 
     void broadcast(String str) {
         str = "系统通知: " + str;
-        synchronized (clientHandlerList) {
-            for (ClientHandler clientHandler : clientHandlerList) {
+        ClientHandler[] clientHandlerArr;
+        synchronized (clientHandlers) {
+            clientHandlerArr = clientHandlers.toArray(new ClientHandler[0]);
+            // 这是一个多线程操作，这里使用同步
+            for (ClientHandler clientHandler : clientHandlerArr) {
                 sendMsg2Client(clientHandler, str);
             }
         }
@@ -111,7 +120,7 @@ public class TCPServer implements AcceptListener, Group.GroupMsgAdapter {
     Object[] getStatusString() {
 
         return new String[]{
-            "客户端数量: " + clientHandlerList.size(),
+            "客户端数量: " + clientHandlers.size(),
             "发送数量: " + statistics.sendSize,
             "接收数量: " + statistics.receiveSize
         };
@@ -130,10 +139,16 @@ public class TCPServer implements AcceptListener, Group.GroupMsgAdapter {
                 .appendLast(new ParseCommandConnectorStrPacket());
 
             clientHandler.getCloseChain().appendLast(new RemoveQueueOnCloseConnect());
+
+            // 当发现新当socket连接时将心跳调度任务设置进去，每10s发送一次心跳
+            IdleTimeoutScheduleJob job = new IdleTimeoutScheduleJob(10,
+                TimeUnit.SECONDS, clientHandler);
+            clientHandler.schedule(job);
+
             // 这里相当于把这个连接保存在本地内存中
-            synchronized (clientHandlerList) {
-                clientHandlerList.add(clientHandler);
-                System.out.println("当前客户端数量:" + clientHandlerList.size());
+            synchronized (clientHandlers) {
+                clientHandlers.add(clientHandler);
+                System.out.println("当前客户端数量:" + clientHandlers.size());
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -145,8 +160,8 @@ public class TCPServer implements AcceptListener, Group.GroupMsgAdapter {
 
         @Override
         protected boolean consume(ClientHandler handler, Connector connector) {
-            synchronized (clientHandlerList) {
-                clientHandlerList.remove(handler);
+            synchronized (clientHandlers) {
+                clientHandlers.remove(handler);
                 // 从群聊中移除
                 Group group = groups.get(Foo.DEFAULT_GROUP_NAME);
                 group.removeMember(handler);

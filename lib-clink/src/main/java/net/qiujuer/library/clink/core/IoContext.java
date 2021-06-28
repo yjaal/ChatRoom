@@ -1,6 +1,5 @@
 package net.qiujuer.library.clink.core;
 
-import java.io.Closeable;
 import java.io.IOException;
 
 /**
@@ -12,12 +11,19 @@ public class IoContext {
 
     private final IoProvider ioProvider;
 
-    private IoContext(IoProvider ioProvider) {
+    private final Scheduler scheduler;
+
+    private IoContext(IoProvider ioProvider, Scheduler scheduler) {
         this.ioProvider = ioProvider;
+        this.scheduler = scheduler;
     }
 
     public IoProvider getIoProvider() {
         return ioProvider;
+    }
+
+    public Scheduler getScheduler() {
+        return scheduler;
     }
 
     public static IoContext get() {
@@ -36,10 +42,14 @@ public class IoContext {
 
     public void callClose() throws IOException {
         ioProvider.close();
+        scheduler.close();
     }
 
-    public static class StartedBoot{
+    public static class StartedBoot {
+
         private IoProvider ioProvider;
+
+        private Scheduler scheduler;
 
         private StartedBoot() {
         }
@@ -49,8 +59,13 @@ public class IoContext {
             return this;
         }
 
+        public StartedBoot schedule(Scheduler scheduler) {
+            this.scheduler = scheduler;
+            return this;
+        }
+
         public IoContext start() {
-            INSTANCE = new IoContext(ioProvider);
+            INSTANCE = new IoContext(ioProvider, scheduler);
             return INSTANCE;
         }
     }

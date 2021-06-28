@@ -4,6 +4,8 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import net.qiujuer.library.clink.box.BytesReceivePacket;
 import net.qiujuer.library.clink.box.FileReceivePacket;
@@ -13,11 +15,13 @@ import net.qiujuer.library.clink.core.ReceiveDispatcher.ReceivePacketCallback;
 import net.qiujuer.library.clink.impl.SocketChannelAdapter;
 import net.qiujuer.library.clink.impl.async.AsyncReceiveDispatcher;
 import net.qiujuer.library.clink.impl.async.AsyncSendDispatcher;
+import net.qiujuer.library.clink.utils.CloseUtils;
 
 /**
  * 用于标识服务端和客户端的某个连接
  */
-public abstract class Connector implements Closeable, SocketChannelAdapter.OnChannelStatusChangedListener {
+public abstract class Connector implements Closeable,
+    SocketChannelAdapter.OnChannelStatusChangedListener {
 
     /**
      * 这里用于标识连接的唯一性
@@ -36,6 +40,8 @@ public abstract class Connector implements Closeable, SocketChannelAdapter.OnCha
      * 用于接收数据
      */
     private ReceiveDispatcher receiveDispatcher;
+
+    private final List<ScheduleJob> scheduleJobs = new ArrayList<>(4);
 
     public void setup(SocketChannel channel) throws IOException {
 
@@ -89,7 +95,11 @@ public abstract class Connector implements Closeable, SocketChannelAdapter.OnCha
 
     @Override
     public void onChannelClosed(SocketChannel channel) {
-
+        synchronized (scheduleJobs) {
+            scheduleJobs.forEach(ScheduleJob::unSchedule);
+            scheduleJobs.clear();
+        }
+        CloseUtils.close(this);
     }
 
     /**
@@ -97,31 +107,66 @@ public abstract class Connector implements Closeable, SocketChannelAdapter.OnCha
      */
     protected abstract File createNewReceiveFile();
 
-    private ReceiveDispatcher.ReceivePacketCallback receivePacketCallback = new ReceivePacketCallback() {
-        @Override
-        public ReceivePacket<?, ?> onReceivedNewPacket(byte type, long length) {
-            switch (type) {
-                case Packet.TYPE_MEMORY_BYTES:
-                    return new BytesReceivePacket(length);
-                case Packet.TYPE_MEMORY_STRING:
-                    return new StringReceivePacket(length);
-                case Packet.TYPE_STREAM_FILE:
-                    return new FileReceivePacket(length, createNewReceiveFile());
-                case Packet.TYPE_STREAM_DIRECT:
-                    // 后面完善
-                    return null;
-                default:
-                    throw new UnsupportedOperationException("发送数据的格式不支持");
+    private ReceiveDispatcher.ReceivePacketCallback receivePacketCallback =
+        new ReceivePacketCallback() {
+            @Override
+            public ReceivePacket<?, ?> onReceivedNewPacket(byte type, long length) {
+                switch (type) {
+                    case Packet.TYPE_MEMORY_BYTES:
+                        return new BytesReceivePacket(length);
+                    case Packet.TYPE_MEMORY_STRING:
+                        return new StringReceivePacket(length);
+                    case Packet.TYPE_STREAM_FILE:
+                        return new FileReceivePacket(length, createNewReceiveFile());
+                    case Packet.TYPE_STREAM_DIRECT:
+                        // 后面完善
+                        return null;
+                    default:
+                        throw new UnsupportedOperationException("发送数据的格式不支持");
+                }
             }
-        }
 
-        @Override
-        public void onReceivePacketCompleted(ReceivePacket packet) {
-            onReceivedPacket(packet);
-        }
-    };
+            @Override
+            public void onReceivePacketCompleted(ReceivePacket packet) {
+                onReceivedPacket(packet);
+            }
 
-    public UUID getKey(){
+            @Override
+            public void onReceiveHeartbeat() {
+                // 收到心跳帧只是简单打印即可
+                System.out.println(key.toString() + ":[Heartbeat]");
+            }
+        };
+
+    public UUID getKey() {
         return key;
+    }
+
+    public long getLastActiveTime() {
+        return Math.max(sender.getLastWriterTime(), receiver.getLastReadTime());
+    }
+
+    /**
+     * 提供外部进行调度
+     */
+    public void schedule(ScheduleJob job) {
+        synchronized (scheduleJobs) {
+            if (scheduleJobs.contains(job)) {
+                return;
+            }
+            // 执行具体调度
+            Scheduler scheduler = IoContext.get().getScheduler();
+            job.schedule(scheduler);
+            scheduleJobs.add(job);
+        }
+    }
+
+    public void fireIdleTimeoutEvent() {
+        // 超时后发送一个心跳包
+        sendDispatcher.sendHeartbeat();
+    }
+
+    public void fireExceptionCaught(Throwable e) {
+
     }
 }

@@ -103,4 +103,9 @@ public class AsyncReceiveDispatcher implements ReceiveDispatcher, IOArgsEventPro
         CloseUtils.close(packet);
         callback.onReceivePacketCompleted(packet);
     }
+
+    @Override
+    public void onReceiveHeartbeat() {
+        callback.onReceiveHeartbeat();
+    }
 }

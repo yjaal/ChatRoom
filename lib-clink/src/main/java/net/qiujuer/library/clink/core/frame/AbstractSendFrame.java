@@ -19,9 +19,13 @@ public abstract class AbstractSendFrame extends Frame {
 
     volatile int bodyRemaining;
 
-    public AbstractSendFrame(int len, byte type, byte flag, short identifier) {
+    AbstractSendFrame(int len, byte type, byte flag, short identifier) {
         super(len, type, flag, identifier);
         bodyRemaining = len;
+    }
+
+    AbstractSendFrame(byte[] header) {
+        super(header);
     }
 
     /**
