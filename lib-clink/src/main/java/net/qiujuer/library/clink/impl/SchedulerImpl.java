@@ -16,6 +16,9 @@ import net.qiujuer.library.clink.core.Scheduler;
  **/
 public class SchedulerImpl implements Scheduler {
 
+    /**
+     * 定时任务，可以重复执行，同时可以随时更改执行时间
+     */
     private final ScheduledExecutorService pool;
 
     private final ExecutorService deliveryPool;

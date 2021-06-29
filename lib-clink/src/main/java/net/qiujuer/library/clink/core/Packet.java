@@ -30,6 +30,12 @@ public abstract class Packet<Stream extends Closeable> implements Closeable {
      */
     public static final byte TYPE_STREAM_DIRECT = 4;
 
+    /**
+     * 最大包大小，5个字节满载组成的Long类型
+     */
+    public static final long MAX_PACKET_SIZE = (((0xFFL) << 32) | ((0xFFL) << 24) | ((0xFFL) << 16)
+        | ((0xFFL) << 8) | ((0xFFL)));
+
     protected long length;
 
     private Stream stream;

@@ -3,12 +3,14 @@ package net.qiujuer.library.clink.core;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.qiujuer.library.clink.box.BytesReceivePacket;
 import net.qiujuer.library.clink.box.FileReceivePacket;
+import net.qiujuer.library.clink.box.StreamDirectReceivePacket;
 import net.qiujuer.library.clink.box.StringReceivePacket;
 import net.qiujuer.library.clink.box.StringSendPacket;
 import net.qiujuer.library.clink.core.ReceiveDispatcher.ReceivePacketCallback;
@@ -105,22 +107,30 @@ public abstract class Connector implements Closeable,
     /**
      * 创建临时接收文件
      */
-    protected abstract File createNewReceiveFile();
+    protected abstract File createNewReceiveFile(long length, byte[] headerInfo);
+
+    /**
+     * 创建直流
+     */
+    protected abstract OutputStream createNewReceiveDirectOutputStream(long length,
+        byte[] headerInfo);
 
     private ReceiveDispatcher.ReceivePacketCallback receivePacketCallback =
         new ReceivePacketCallback() {
             @Override
-            public ReceivePacket<?, ?> onReceivedNewPacket(byte type, long length) {
+            public ReceivePacket<?, ?> onReceivedNewPacket(byte type, long length,
+                byte[] headerInfo) {
                 switch (type) {
                     case Packet.TYPE_MEMORY_BYTES:
                         return new BytesReceivePacket(length);
                     case Packet.TYPE_MEMORY_STRING:
                         return new StringReceivePacket(length);
                     case Packet.TYPE_STREAM_FILE:
-                        return new FileReceivePacket(length, createNewReceiveFile());
+                        return new FileReceivePacket(length,
+                            createNewReceiveFile(length, headerInfo));
                     case Packet.TYPE_STREAM_DIRECT:
-                        // 后面完善
-                        return null;
+                        return new StreamDirectReceivePacket(
+                            createNewReceiveDirectOutputStream(length, headerInfo), length);
                     default:
                         throw new UnsupportedOperationException("发送数据的格式不支持");
                 }

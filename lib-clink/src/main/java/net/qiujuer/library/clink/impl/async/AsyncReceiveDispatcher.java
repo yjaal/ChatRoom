@@ -95,7 +95,7 @@ public class AsyncReceiveDispatcher implements ReceiveDispatcher, IOArgsEventPro
 
     @Override
     public ReceivePacket takePacket(byte type, long len, byte[] headInfo) {
-        return callback.onReceivedNewPacket(type, len);
+        return callback.onReceivedNewPacket(type, len, headInfo);
     }
 
     @Override

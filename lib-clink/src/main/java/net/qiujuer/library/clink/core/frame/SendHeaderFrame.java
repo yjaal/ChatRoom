@@ -6,6 +6,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import net.qiujuer.library.clink.core.Frame;
 import net.qiujuer.library.clink.core.IoArgs;
+import net.qiujuer.library.clink.core.Packet;
 import net.qiujuer.library.clink.core.SendPacket;
 
 /**
@@ -14,7 +15,7 @@ import net.qiujuer.library.clink.core.SendPacket;
  * @author YJ
  * @date 2021/5/12
  **/
-public class SendHeaderFrame extends AbstractSendPacketFrame{
+public class SendHeaderFrame extends AbstractSendPacketFrame {
 
     public static final int PACKET_HEADER_FRAME_MIN_LENGTH = 6;
 
@@ -56,6 +57,12 @@ public class SendHeaderFrame extends AbstractSendPacketFrame{
 
     @Override
     public Frame buildNextFrame() {
+        byte type = packet.type();
+        // 直流数据类型
+        if (type == Packet.TYPE_STREAM_DIRECT) {
+            return SendDirectEntityFrame.buildEntityFrame(packet, getBodyIdentifier());
+        }
+        // 普通数据类型
         InputStream stream = packet.open();
         ReadableByteChannel channel = Channels.newChannel(stream);
         return new SendEntityFrame(this.getBodyIdentifier(), packet.length(), channel, packet);

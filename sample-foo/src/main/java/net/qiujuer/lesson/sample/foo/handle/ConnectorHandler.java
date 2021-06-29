@@ -1,8 +1,10 @@
 package net.qiujuer.lesson.sample.foo.handle;
 
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.channels.SocketChannel;
 import net.qiujuer.lesson.sample.foo.Foo;
 import net.qiujuer.library.clink.box.StringReceivePacket;
@@ -49,8 +51,14 @@ public class ConnectorHandler extends Connector {
     }
 
     @Override
-    protected File createNewReceiveFile() {
+    protected File createNewReceiveFile(long length, byte[] headerInfo) {
         return Foo.createRandomTemp(cachePath);
+    }
+
+    @Override
+    protected OutputStream createNewReceiveDirectOutputStream(long length, byte[] headerInfo) {
+        // 默认创建一个内存存储ByteArrayOutputStream
+        return new ByteArrayOutputStream();
     }
 
     @Override
