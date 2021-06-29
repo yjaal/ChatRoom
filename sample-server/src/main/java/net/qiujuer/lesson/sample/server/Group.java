@@ -2,8 +2,8 @@ package net.qiujuer.lesson.sample.server;
 
 import java.util.ArrayList;
 import java.util.List;
-import net.qiujuer.lesson.sample.server.handle.ClientHandler;
-import net.qiujuer.lesson.sample.server.handle.ConnectorStringPacketChain;
+import net.qiujuer.lesson.sample.foo.handle.ConnectorHandler;
+import net.qiujuer.lesson.sample.foo.handle.ConnectorStringPacketChain;
 import net.qiujuer.library.clink.box.StringReceivePacket;
 
 public class Group {
@@ -12,7 +12,7 @@ public class Group {
 
     private final GroupMsgAdapter adapter;
 
-    private final List<ClientHandler> members = new ArrayList<>();
+    private final List<ConnectorHandler> members = new ArrayList<>();
 
     public Group(String name, GroupMsgAdapter adapter) {
         this.name = name;
@@ -26,7 +26,7 @@ public class Group {
     /**
      * 加入群
      */
-    boolean addMember(ClientHandler handler) {
+    boolean addMember(ConnectorHandler handler) {
         synchronized (members) {
             if (!members.contains(handler)) {
                 members.add(handler);
@@ -42,7 +42,7 @@ public class Group {
     /**
      * 退出群
      */
-    boolean removeMember(ClientHandler handler) {
+    boolean removeMember(ConnectorHandler handler) {
         synchronized (members) {
             if (members.remove(handler)) {
                 handler.getStringPacketChain().remove(ForwardConnectorStrPacketChain.class);
@@ -58,10 +58,10 @@ public class Group {
      */
     private class ForwardConnectorStrPacketChain extends ConnectorStringPacketChain {
         @Override
-        protected boolean consume(ClientHandler handler, StringReceivePacket packet) {
+        protected boolean consume(ConnectorHandler handler, StringReceivePacket packet) {
             // 消息转发
             synchronized (members) {
-                for (ClientHandler member : members) {
+                for (ConnectorHandler member : members) {
                     if (member == handler) {
                         continue;
                     }
@@ -73,6 +73,6 @@ public class Group {
     }
 
     interface GroupMsgAdapter {
-        void sendMsg2Client(ClientHandler handler, String msg);
+        void sendMsg2Client(ConnectorHandler handler, String msg);
     }
 }

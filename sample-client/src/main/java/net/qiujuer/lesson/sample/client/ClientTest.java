@@ -9,6 +9,7 @@ import net.qiujuer.lesson.sample.client.bean.ServerInfo;
 import net.qiujuer.lesson.sample.foo.Foo;
 import net.qiujuer.library.clink.core.IoContext;
 import net.qiujuer.library.clink.impl.IoSelectorProvider;
+import net.qiujuer.library.clink.impl.SchedulerImpl;
 
 /**
  * <p>测试类，可以使用JvirtualVM进行测试
@@ -21,7 +22,10 @@ public class ClientTest {
     public static void main(String[] args) throws IOException {
 
         File cachePath = Foo.getCacheDir("client/test");
-        IoContext.setup().ioProvider(new IoSelectorProvider()).start();
+        IoContext.setup()
+            .ioProvider(new IoSelectorProvider())
+            .schedule(new SchedulerImpl(1))
+            .start();
 
         // 启动UDP搜索服务，发送广播消息
         ServerInfo info = UDPSearcher.searchServer(10000);

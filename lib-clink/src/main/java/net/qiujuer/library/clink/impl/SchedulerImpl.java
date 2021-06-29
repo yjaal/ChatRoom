@@ -1,12 +1,12 @@
 package net.qiujuer.library.clink.impl;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import net.qiujuer.library.clink.core.Scheduler;
-import net.qiujuer.library.clink.impl.IoSelectorProvider.IoProviderThreadFactory;
 
 /**
  * 调度器实现
@@ -18,9 +18,13 @@ public class SchedulerImpl implements Scheduler {
 
     private final ScheduledExecutorService pool;
 
+    private final ExecutorService deliveryPool;
+
     public SchedulerImpl(int poolSize) {
         this.pool = Executors.newScheduledThreadPool(poolSize,
-            new IoProviderThreadFactory("Scheduler-Thread-"));
+            new NameableThreadFactory("Scheduler-Thread-"));
+        this.deliveryPool = Executors.newFixedThreadPool(1,
+            new NameableThreadFactory("Delivery-Thread-"));
     }
 
     @Override
@@ -28,8 +32,17 @@ public class SchedulerImpl implements Scheduler {
         return pool.schedule(runnable, delay, unit);
     }
 
+    /**
+     * 这里只是一个简单的消息调度转发
+     */
+    @Override
+    public void delivery(Runnable runnable) {
+        deliveryPool.execute(runnable);
+    }
+
     @Override
     public void close() throws IOException {
         pool.shutdownNow();
+        deliveryPool.shutdownNow();
     }
 }

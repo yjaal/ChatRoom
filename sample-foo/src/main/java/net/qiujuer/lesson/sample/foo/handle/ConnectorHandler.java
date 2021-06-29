@@ -1,13 +1,13 @@
-package net.qiujuer.lesson.sample.server.handle;
+package net.qiujuer.lesson.sample.foo.handle;
 
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.Executor;
 import net.qiujuer.lesson.sample.foo.Foo;
 import net.qiujuer.library.clink.box.StringReceivePacket;
 import net.qiujuer.library.clink.core.Connector;
+import net.qiujuer.library.clink.core.IoContext;
 import net.qiujuer.library.clink.core.Packet;
 import net.qiujuer.library.clink.core.ReceivePacket;
 import net.qiujuer.library.clink.utils.CloseUtils;
@@ -16,31 +16,30 @@ import net.qiujuer.library.clink.utils.CloseUtils;
  * <p>这个类就是一个接收发送消息的处理类，TCP server一方面接收来自某个客户端发送的消息
  * <p>一方面又将这个消息转发出去，当然不能发给自己
  */
-public class ClientHandler extends Connector {
+public class ConnectorHandler extends Connector {
 
     private final File cachePath;
 
+    /**
+     * 这两个处理链只是作为一个头，后面方便添加相关具体当处理链，这里并不进行消费
+     */
     private final ConnectorCloseChain closeChain = new DefaultPrintConnectorCloseChain();
-
-    private final Executor deliveryPool;
-
-    private final ConnectorStringPacketChain strPacketChain = new DefaultNonConnectorStringPacketChain();
+    private final ConnectorStringPacketChain strPacketChain =
+        new DefaultNonConnectorStringPacketChain();
 
     /**
      * 自身的一个描述信息
      */
     private final String clientInfo;
 
-    public ClientHandler(SocketChannel socketChannel, File cachePath, Executor deliveryPool) throws IOException {
+    public ConnectorHandler(SocketChannel socketChannel, File cachePath) throws IOException {
         this.cachePath = cachePath;
         this.clientInfo = socketChannel.getRemoteAddress().toString();
-        this.deliveryPool = deliveryPool;
         setup(socketChannel);
     }
 
     public void exit() {
         CloseUtils.close(this);
-        closeChain.handle(this, this);
     }
 
     @Override
@@ -67,7 +66,7 @@ public class ClientHandler extends Connector {
     }
 
     private void deliveryStringPacket(StringReceivePacket packet) {
-        deliveryPool.execute(() -> strPacketChain.handle(this, packet));
+        IoContext.get().getScheduler().delivery(() -> strPacketChain.handle(this, packet));
     }
 
     public String getClientInfo() {

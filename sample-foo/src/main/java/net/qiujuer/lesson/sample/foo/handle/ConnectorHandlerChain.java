@@ -1,4 +1,4 @@
-package net.qiujuer.lesson.sample.server.handle;
+package net.qiujuer.lesson.sample.foo.handle;
 
 /**
  * 客户端连接责任链
@@ -32,7 +32,7 @@ public abstract class ConnectorHandlerChain<Model> {
     /**
      * 处理方法
      */
-    boolean handle(ClientHandler handler, Model model) {
+    boolean handle(ConnectorHandler handler, Model model) {
         ConnectorHandlerChain<Model> next = this.next;
 
         // 自己消费
@@ -67,12 +67,12 @@ public abstract class ConnectorHandlerChain<Model> {
         }
     }
 
-    protected abstract boolean consume(ClientHandler handler, Model model);
+    protected abstract boolean consume(ConnectorHandler handler, Model model);
 
     /**
      * 刚开始自己没有消费，然后后面节点也没有消费，则再次消费，比如此客户端不在任何一个群里
      */
-    protected boolean consumeAgain(ClientHandler handler, Model model) {
+    protected boolean consumeAgain(ConnectorHandler handler, Model model) {
         return false;
     }
 }
