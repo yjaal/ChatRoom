@@ -107,6 +107,10 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
 
             lastReadTime = System.currentTimeMillis();
             IOArgsEventProcessor processor = receiverProcessor;
+            // 表示可能被取消掉了
+            if (processor == null) {
+                return;
+            }
             if (args == null) {
                 args = processor.provideIoArgs();
             }
@@ -120,7 +124,8 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
                     if (count == 0) {
                         System.out.println("Current read zero data");
                     }
-                    if (args.remained()) {
+                    // 检查是否还有空闲空间，以及是否需要填满空闲空间
+                    if (args.remained() && args.isNeedConsumeRemaining()) {
                         attach = args;
                         ioProvider.registerInput(channel, this);
                     } else {
@@ -150,6 +155,10 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
             lastWriteTime = System.currentTimeMillis();
             // 这里的sendProcessor是传入的
             IoArgs.IOArgsEventProcessor processor = sendProcessor;
+            // 表示可能被取消掉了
+            if (processor == null) {
+                return;
+            }
             if (args == null) {
                 // 如果为空，则请求获取一份，如果不为空，则是上一次未发送完的
                 args = processor.provideIoArgs();
@@ -165,7 +174,8 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
                         // 表明当前是无法发送数据的
                         System.out.println("Current write zero data");
                     }
-                    if (args.remained()) {
+                    // 检查是否还有未消费的数据 以及是否需要将所有数据都消费掉
+                    if (args.remained() && args.isNeedConsumeRemaining()) {
                         // 还有数据输出，则再次注册
                         attach = args;
                         ioProvider.registerOutput(channel, this);

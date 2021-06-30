@@ -14,8 +14,30 @@ import java.nio.channels.WritableByteChannel;
  */
 public class IoArgs {
 
-    private int limit = 256;
+    /**
+     * oo 单词操作最大区间
+     */
+    private int limit;
+    /**
+     * 是否需要消费所有区间(读取、写入)
+     */
+    private final boolean isNeedConsumeRemaining;
+
     private ByteBuffer buffer = ByteBuffer.allocate(limit);
+
+    public IoArgs() {
+        this(256);
+    }
+
+    public IoArgs(int size) {
+        this(size, true);
+    }
+
+    public IoArgs(int size, boolean isNeedConsumeRemaining) {
+        this.limit = size;
+        this.isNeedConsumeRemaining = isNeedConsumeRemaining;
+        this.buffer = ByteBuffer.allocate(size);
+    }
 
     /**
      * 表示本次读取了多大数据，从channel中读，往buffer中写
@@ -112,6 +134,13 @@ public class IoArgs {
         this.limit = Math.min(limit, buffer.capacity());
     }
 
+    /**
+     * 重置最大限制
+     */
+    public void resetLimit() {
+        this.limit = buffer.capacity();
+    }
+
     public int readLen() {
         return buffer.getInt();
     }
@@ -126,6 +155,13 @@ public class IoArgs {
     public boolean remained() {
         // 返回当前buffer可存储空间是否大于0
         return buffer.remaining() > 0;
+    }
+
+    /**
+     * 是否需要填充满 或者 是否完全消费所有数据
+     */
+    public boolean isNeedConsumeRemaining() {
+        return isNeedConsumeRemaining;
     }
 
     /**
