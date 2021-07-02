@@ -17,6 +17,7 @@ import net.qiujuer.library.clink.core.ReceiveDispatcher.ReceivePacketCallback;
 import net.qiujuer.library.clink.impl.SocketChannelAdapter;
 import net.qiujuer.library.clink.impl.async.AsyncReceiveDispatcher;
 import net.qiujuer.library.clink.impl.async.AsyncSendDispatcher;
+import net.qiujuer.library.clink.impl.bridge.BridgeSocketDispatcher;
 import net.qiujuer.library.clink.utils.CloseUtils;
 
 /**
@@ -178,5 +179,35 @@ public abstract class Connector implements Closeable,
 
     public void fireExceptionCaught(Throwable e) {
 
+    }
+
+    /**
+     * 将另外一个连接的发送者绑定到当前的桥接调度器上实现两个连接的桥接功能
+     *
+     * @param sender 另外一个连接的发送者
+     */
+    public void bind2Bridge(Sender sender) {
+        if (sender == this.sender) {
+            throw new UnsupportedOperationException("Can not set current connector sender");
+        }
+
+        if (!(receiveDispatcher instanceof BridgeSocketDispatcher)) {
+            throw new IllegalStateException("receiveDispatcher is not BridgeSocketDispatcher");
+        }
+        ((BridgeSocketDispatcher) receiveDispatcher).bindSender(sender);
+    }
+
+    /**
+     * 解绑
+     */
+    public void unBind2Bridge() {
+        if (!(receiveDispatcher instanceof BridgeSocketDispatcher)) {
+            throw new IllegalStateException("receiveDispatcher is not BridgeSocketDispatcher");
+        }
+        ((BridgeSocketDispatcher) receiveDispatcher).bindSender(null);
+    }
+
+    public Sender getSender() {
+        return sender;
     }
 }

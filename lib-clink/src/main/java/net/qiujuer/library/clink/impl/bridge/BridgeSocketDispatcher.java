@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
-import java.time.chrono.IsoEra;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.qiujuer.library.clink.core.IoArgs;
 import net.qiujuer.library.clink.core.IoArgs.IOArgsEventProcessor;
@@ -75,22 +74,6 @@ public class BridgeSocketDispatcher implements ReceiveDispatcher, SendDispatcher
             sender.setSendListener(senderEventProcessor);
             requestSend();
         }
-    }
-
-    /**
-     * 将另外一个连接的发送者绑定到当前的桥接调度器上实现两个连接的桥接功能
-     *
-     * @param sender 另外一个连接的发送者
-     */
-    public void bind2Bridge(Sender sender) {
-        if (sender == this.sender) {
-            throw new UnsupportedOperationException("Can not set current connector sender");
-        }
-
-        if (!(receiverEventProcessor instanceof BridgeSocketDispatcher)) {
-            throw new IllegalStateException("receiveDispatcher is not BridgeSocketDispatcher");
-        }
-        ((BridgeSocketDispatcher) receiverEventProcessor).bindSender(sender);
     }
 
     /**

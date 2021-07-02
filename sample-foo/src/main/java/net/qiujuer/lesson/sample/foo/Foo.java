@@ -14,6 +14,41 @@ public class Foo {
     public static final String DEFAULT_GROUP_NAME = "GG";
 
     /**
+     * 绑定Stream到一个命令链接（带参数）
+     */
+    public static final String COMMAND_CONNECTOR_BIND = "--m c bind";
+
+    /**
+     * 创建对话房间
+     */
+    public static final String COMMAND_AUDIO_CREATE_ROOM = "--m a create";
+
+    /**
+     * 回送服务器傻姑娘的唯一标志（带参数）
+     */
+    public static final String COMMAND_INFO_NAME = "--i server";
+
+    /**
+     * 回送语音群名（带参数）
+     */
+    public static final String COMMAND_INFO_AUDIO_ROOM = "--i a room";
+
+    /**
+     * 回送语音开始（带参数）
+     */
+    public static final String COMMAND_INFO_AUDIO_START = "--i a start";
+
+    /**
+     * 回送语音结束
+     */
+    public static final String COMMAND_INFO_AUDIO_STOP = "--i a stop";
+
+    /**
+     * 回送语音异常
+     */
+    public static final String COMMAND_INFO_AUDIO_ERROR = "--i a error";
+
+    /**
      * 创建一个缓存的目录
      */
     public static File getCacheDir(String dir) {
