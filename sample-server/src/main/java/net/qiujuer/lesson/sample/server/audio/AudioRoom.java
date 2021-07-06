@@ -22,6 +22,7 @@ public class AudioRoom {
     private volatile ConnectorHandler handler2;
 
     public AudioRoom() {
+        // 生成一个唯一的房间号
         this.roomCode = getRandomString(5);
     }
 
@@ -67,4 +68,30 @@ public class AudioRoom {
         }
         return sb.toString();
     }
+
+    public synchronized boolean enterRoom(ConnectorHandler connectorHandler) {
+        if (handler1 == null) {
+            handler1 = connectorHandler;
+        } else if (handler2 == null) {
+            handler2 = connectorHandler;
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 退出房间
+     *
+     * @return 退出后如果还有一人剩余则返回剩余的人
+     */
+    public synchronized ConnectorHandler exitRoom(ConnectorHandler handler) {
+        if (handler1 == handler) {
+            handler1 = null;
+        } else if (handler2 == handler) {
+            handler2 = null;
+        }
+        return handler1 == null ? handler2 : handler1;
+    }
+
 }

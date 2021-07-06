@@ -210,4 +210,23 @@ public abstract class Connector implements Closeable,
     public Sender getSender() {
         return sender;
     }
+
+    /**
+     * 改变当前调度器为桥接模式
+     */
+    public void change2bridge() {
+        if (receiveDispatcher instanceof BridgeSocketDispatcher) {
+            // 已改变直接返回
+            return;
+        }
+        // 老的停止
+        receiveDispatcher.stop();
+
+        // 构建新的接收者调度器
+        BridgeSocketDispatcher bridgeSocketDispatcher = new BridgeSocketDispatcher(receiver);
+        receiveDispatcher = bridgeSocketDispatcher;
+        //启动
+        bridgeSocketDispatcher.start();
+    }
+
 }

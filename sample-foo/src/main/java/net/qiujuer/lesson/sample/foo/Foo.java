@@ -16,7 +16,7 @@ public class Foo {
     /**
      * 绑定Stream到一个命令链接（带参数）
      */
-    public static final String COMMAND_CONNECTOR_BIND = "--m c bind";
+    public static final String COMMAND_CONNECTOR_BIND = "--m c bind ";
 
     /**
      * 创建对话房间
@@ -24,19 +24,29 @@ public class Foo {
     public static final String COMMAND_AUDIO_CREATE_ROOM = "--m a create";
 
     /**
+     * 加入对话房间（带参数）最后有空格
+     */
+    public static final String COMMAND_AUDIO_JOIN_ROOM = "--m a join ";
+
+    /**
+     * 主动离开对话房间
+     */
+    public static final String COMMAND_AUDIO_LEAVE_ROOM = "--m a leave";
+
+    /**
      * 回送服务器傻姑娘的唯一标志（带参数）
      */
-    public static final String COMMAND_INFO_NAME = "--i server";
+    public static final String COMMAND_INFO_NAME = "--i server ";
 
     /**
      * 回送语音群名（带参数）
      */
-    public static final String COMMAND_INFO_AUDIO_ROOM = "--i a room";
+    public static final String COMMAND_INFO_AUDIO_ROOM = "--i a room ";
 
     /**
      * 回送语音开始（带参数）
      */
-    public static final String COMMAND_INFO_AUDIO_START = "--i a start";
+    public static final String COMMAND_INFO_AUDIO_START = "--i a start ";
 
     /**
      * 回送语音结束

@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.channels.SocketChannel;
+import java.util.Objects;
 import net.qiujuer.lesson.sample.foo.Foo;
 import net.qiujuer.library.clink.box.StringReceivePacket;
 import net.qiujuer.library.clink.core.Connector;
@@ -87,5 +88,23 @@ public class ConnectorHandler extends Connector {
 
     public ConnectorCloseChain getCloseChain() {
         return closeChain;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof ConnectorHandler)) {
+            return false;
+        }
+        ConnectorHandler that = (ConnectorHandler) o;
+        return Objects.equals(cachePath, that.cachePath) && Objects.equals(getCloseChain(), that.getCloseChain())
+            && Objects.equals(strPacketChain, that.strPacketChain) && getClientInfo().equals(that.getClientInfo());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(cachePath, getCloseChain(), strPacketChain, getClientInfo());
     }
 }
