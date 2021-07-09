@@ -17,12 +17,19 @@ import net.qiujuer.library.clink.utils.CloseUtils;
  */
 public class TCPClient extends ConnectorHandler {
 
-    public TCPClient(SocketChannel socketChannel, File cachePath) throws IOException {
+    public TCPClient(SocketChannel socketChannel, File cachePath, boolean printReceiveStr) throws IOException {
         super(socketChannel, cachePath);
-        this.getStringPacketChain().appendLast(new PrintStrPacketChain());
+        if (printReceiveStr) {
+            // 是否打印收到的信息
+            this.getStringPacketChain().appendLast(new PrintStrPacketChain());
+        }
     }
 
     static TCPClient startWith(ServerInfo info, File cachePath) throws IOException {
+        return startWith(info, cachePath, true);
+    }
+
+    static TCPClient startWith(ServerInfo info, File cachePath, boolean printReceiveStr) throws IOException {
         SocketChannel socketChannel = SocketChannel.open();
 
         // 连接本地，端口2000
@@ -34,7 +41,7 @@ public class TCPClient extends ConnectorHandler {
         System.out.println("服务器信息：" + socketChannel.getRemoteAddress().toString());
 
         try {
-            return new TCPClient(socketChannel, cachePath);
+            return new TCPClient(socketChannel, cachePath, printReceiveStr);
         } catch (Exception e) {
             CloseUtils.close(socketChannel);
         }
