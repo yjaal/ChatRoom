@@ -66,9 +66,10 @@ public class AsyncSendDispatcher implements SendDispatcher, IOArgsEventProcessor
             // 如果有数据则进行发送
             if (packetReader.requestTakePacker()) {
                 try {
+                    isSending.set(true);
                     boolean isSucc = sender.postSendAsync();
-                    if (isSucc) {
-                        isSending.set(true);
+                    if (!isSucc) {
+                        isSending.set(false);
                     }
                 } catch (IOException e) {
                     closeAndNotify();

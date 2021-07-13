@@ -79,7 +79,11 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
         }
         // 进行callback状态检查，判断是否由于上一次未读取或写入完成而处于自循环状态
         outputCallback.checkAttachIsNull();
-        return ioProvider.registerOutput(channel, outputCallback);
+        // 这里进行注册，后面将callback放在线程池中进行调度，而在callback中我们发现如果发送出现问题还是会
+        // 进行一次注册，而放在线程池中进行调度比较耗时（下面方法），如果在这里直接调用一次callback.run()
+//        return ioProvider.registerOutput(channel, outputCallback);
+        outputCallback.run();
+        return true;
     }
 
     @Override

@@ -46,9 +46,9 @@ public class IoSelectorProvider implements IoProvider {
         readSelector = Selector.open();
         writeSelector = Selector.open();
 
-        inputHandlePool = Executors.newFixedThreadPool(20,
+        inputHandlePool = Executors.newFixedThreadPool(4,
             new NameableThreadFactory("IoProvider-Input-Thread-"));
-        outputHandlePool = Executors.newFixedThreadPool(20,
+        outputHandlePool = Executors.newFixedThreadPool(4,
             new NameableThreadFactory("IoProvider-Output-Thread-"));
 
         // 开始输出输入的监听，启动读写，后面直接从map中获取相关线程进行执行
@@ -126,9 +126,15 @@ public class IoSelectorProvider implements IoProvider {
         }
     }
 
+    /**
+     * 通道的select、wakeup、register都需要获取到锁，而这里只是使用了一个locker进行控制，这对于多个线程来说是比较
+     * <p>耗时的，而每次要发送数据都是先唤醒、注册，然后在获取到锁，然后将回调丢到线程池中进行处理，这样导致线程间切换
+     * <p>消耗很大，导致性能较差，而上面我们在首次发送到时候先直接进行发送，如果发送遇到问题会进行注册，而不是一上来
+     * <p>就进行注册，这样就会有一定的性能提升，因为一般情况下通道都是准备好了的，是可以直接进行发送的
+     * <p>改进后就是将输出作为优先步骤，将注册等步骤放在了后面
+     */
     private static SelectionKey registerSelection(SocketChannel channel, Selector selector,
-        int regOps,
-        AtomicBoolean locker, HashMap<SelectionKey, Runnable> map, Runnable runnable) {
+        int regOps, AtomicBoolean locker, HashMap<SelectionKey, Runnable> map, Runnable runnable) {
 //        System.out.println("注册相关selector并将回调对象存入缓存，以便线程池执行");
         synchronized (locker) {
             // 设置锁定状态
