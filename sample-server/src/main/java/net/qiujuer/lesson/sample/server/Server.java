@@ -2,16 +2,15 @@ package net.qiujuer.lesson.sample.server;
 
 import static net.qiujuer.lesson.sample.foo.Foo.COMMAND_EXIT;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import net.qiujuer.lesson.sample.foo.Foo;
 import net.qiujuer.lesson.sample.foo.FooGui;
 import net.qiujuer.lesson.sample.foo.constants.TCPConstants;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import net.qiujuer.library.clink.core.IoContext;
-import net.qiujuer.library.clink.impl.IoSelectorProvider;
+import net.qiujuer.library.clink.impl.IoStealingSelectorProvider;
 import net.qiujuer.library.clink.impl.SchedulerImpl;
 
 /**
@@ -27,7 +26,7 @@ public class Server {
         File cachePath = Foo.getCacheDir("server");
 
         IoContext.setup().schedule(new SchedulerImpl(1))
-            .ioProvider(new IoSelectorProvider())
+            .ioProvider(new IoStealingSelectorProvider(1))
             .start();
 
         // 启动一个TCP监听服务，监听30401

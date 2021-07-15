@@ -18,7 +18,7 @@ import net.qiujuer.library.clink.box.FileSendPacket;
 import net.qiujuer.library.clink.core.Connector;
 import net.qiujuer.library.clink.core.IoContext;
 import net.qiujuer.library.clink.core.schedule.IdleTimeoutScheduleJob;
-import net.qiujuer.library.clink.impl.IoSelectorProvider;
+import net.qiujuer.library.clink.impl.IoStealingSelectorProvider;
 import net.qiujuer.library.clink.impl.SchedulerImpl;
 import net.qiujuer.library.clink.utils.CloseUtils;
 
@@ -31,7 +31,7 @@ public class Client {
     public static void main(String[] args) throws IOException {
         File cachePath = Foo.getCacheDir("client");
         IoContext.setup()
-            .ioProvider(new IoSelectorProvider())
+            .ioProvider(new IoStealingSelectorProvider(1))
             .schedule(new SchedulerImpl(1))
             .start();
 

@@ -150,7 +150,7 @@ public class IoSelectorProvider implements IoProvider {
                     key = channel.keyFor(selector);
                     // 已经注册过，那么只需要改变监听值就可以达到监听效果，不需要再次注册
                     if (!Objects.isNull(key)) {
-                        key.interestOps(key.readyOps() | regOps);
+                        key.interestOps(key.interestOps() | regOps);
                     }
                 }
                 // 表明之前没有注册过，这里进行注册
@@ -221,7 +221,7 @@ public class IoSelectorProvider implements IoProvider {
             // 或者用key.cancel()
             try {
                 // 在对key做变更对时候可能key已经被取消关闭了
-                key.interestOps(key.readyOps() & ~op);
+                key.interestOps(key.interestOps() & ~op);
             } catch (CancelledKeyException e) {
                 return;
             }

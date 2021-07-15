@@ -11,7 +11,7 @@ import net.qiujuer.lesson.sample.foo.handle.ConnectorCloseChain;
 import net.qiujuer.lesson.sample.foo.handle.ConnectorHandler;
 import net.qiujuer.library.clink.core.Connector;
 import net.qiujuer.library.clink.core.IoContext;
-import net.qiujuer.library.clink.impl.IoSelectorProvider;
+import net.qiujuer.library.clink.impl.IoStealingSelectorProvider;
 import net.qiujuer.library.clink.impl.SchedulerImpl;
 import net.qiujuer.library.clink.utils.CloseUtils;
 
@@ -47,7 +47,7 @@ public class ClientTest01 {
 
         File cachePath = Foo.getCacheDir("client/test");
         IoContext.setup()
-            .ioProvider(new IoSelectorProvider())
+            .ioProvider(new IoStealingSelectorProvider(1))
             .schedule(new SchedulerImpl(1))
             .start();
 
