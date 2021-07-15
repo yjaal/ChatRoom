@@ -47,7 +47,7 @@ public class ClientTest01 {
 
         File cachePath = Foo.getCacheDir("client/test");
         IoContext.setup()
-            .ioProvider(new IoStealingSelectorProvider(1))
+            .ioProvider(new IoStealingSelectorProvider(3))
             .schedule(new SchedulerImpl(1))
             .start();
 

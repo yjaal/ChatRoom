@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 import net.qiujuer.library.clink.core.IoProvider;
 import net.qiujuer.library.clink.utils.CloseUtils;
 
@@ -48,6 +49,15 @@ public abstract class StealingSelectorThread extends Thread {
      * 单次就绪的任务缓存，随后一次性加入到就绪队列中
      */
     private final List<IoTask> onceReadyTaskCache = new ArrayList<>(200);
+    /**
+     * 饱和度量
+     */
+    private AtomicLong saturatingCapacity = new AtomicLong();
+
+    /**
+     * 用于多线程协同的service
+     */
+    private volatile StealingService stealingService;
 
     public StealingSelectorThread(Selector selector) {
         this.selector = selector;
@@ -135,9 +145,11 @@ public abstract class StealingSelectorThread extends Thread {
      */
     private void consumeTodoTasks(final LinkedBlockingQueue<IoTask> readyTaskQueue,
         LinkedBlockingQueue<IoTask> registerTaskQueue) {
+        final AtomicLong saturatingCapacity = this.saturatingCapacity;
         // 循环把所有任务做完
         IoTask doTask = readyTaskQueue.poll();
         while (doTask != null) {
+            saturatingCapacity.incrementAndGet();
             // 做任务
             if (processTask(doTask)) {
                 // 做完工作后添加待注册的列表
@@ -145,6 +157,18 @@ public abstract class StealingSelectorThread extends Thread {
             }
             // 下一个任务
             doTask = readyTaskQueue.poll();
+        }
+        // 上面就是把自己的任务先做完，然后窃取其他任务
+        final StealingService stealingService = this.stealingService;
+        if (stealingService != null) {
+            doTask = stealingService.steal(readyTaskQueue);
+            while (doTask != null) {
+                saturatingCapacity.incrementAndGet();
+                if (processTask(doTask)) {
+                    registerTaskQueue.offer(doTask);
+                }
+                doTask = stealingService.steal(readyTaskQueue);
+            }
         }
     }
 
@@ -230,11 +254,31 @@ public abstract class StealingSelectorThread extends Thread {
         interrupt();
     }
 
+    public LinkedBlockingQueue<IoTask> getReadyTaskQueue() {
+        return readyTaskQueue;
+    }
+
+
+    /**
+     * 获取饱和度，暂时的饱和度量是使用任务执行的次数来定
+     */
+    public long getSaturatingCapacity() {
+        if (selector.isOpen()) {
+            return saturatingCapacity.get();
+        }
+
+        return -1;
+    }
+
     /**
      * @param task 任务
      * @return 执行任务后是否需要再次添加该任务
      */
     protected abstract boolean processTask(IoTask task);
+
+    public void setStealingService(StealingService stealingService){
+        this.stealingService = stealingService;
+    }
 
     /**
      * 用以注册时添加的附件

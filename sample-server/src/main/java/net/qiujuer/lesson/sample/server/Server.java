@@ -26,7 +26,7 @@ public class Server {
         File cachePath = Foo.getCacheDir("server");
 
         IoContext.setup().schedule(new SchedulerImpl(1))
-            .ioProvider(new IoStealingSelectorProvider(1))
+            .ioProvider(new IoStealingSelectorProvider(3))
             .start();
 
         // 启动一个TCP监听服务，监听30401
