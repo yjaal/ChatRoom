@@ -224,8 +224,8 @@ public class IoArgs {
 
         IoArgs provideIoArgs();
 
-        void onConsumeFailed(IoArgs args, Exception e);
+        boolean onConsumeFailed(Throwable e);
 
-        void onConsumeCompleted(IoArgs args);
+        boolean onConsumeCompleted(IoArgs args);
     }
 }

@@ -2,14 +2,15 @@ package net.qiujuer.library.clink.impl;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.qiujuer.library.clink.core.IoArgs;
 import net.qiujuer.library.clink.core.IoArgs.IOArgsEventProcessor;
 import net.qiujuer.library.clink.core.IoProvider;
-import net.qiujuer.library.clink.core.IoProvider.HandleProviderCallback;
 import net.qiujuer.library.clink.core.Receiver;
 import net.qiujuer.library.clink.core.Sender;
+import net.qiujuer.library.clink.impl.exceptions.EmptyIoArgsException;
 import net.qiujuer.library.clink.utils.CloseUtils;
 
 /**
@@ -22,31 +23,27 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
     private final SocketChannel channel;
     private final IoProvider ioProvider;
 
-    private volatile long lastReadTime = System.currentTimeMillis();
-    private volatile long lastWriteTime = System.currentTimeMillis();
-
     /**
      * 监听通道关闭，进行回调
      */
     private final OnChannelStatusChangedListener listener;
 
-    private IOArgsEventProcessor receiverProcessor;
-    private IOArgsEventProcessor sendProcessor;
+    private final AbsProviderCallback inputCallback;
+    private final AbsProviderCallback outputCallback;
 
     public SocketChannelAdapter(SocketChannel channel, IoProvider ioProvider,
         OnChannelStatusChangedListener listener) throws IOException {
         this.channel = channel;
         this.ioProvider = ioProvider;
         this.listener = listener;
-
-        channel.configureBlocking(false);
+        inputCallback = new InputProvideCallback(channel, SelectionKey.OP_READ, ioProvider);
+        outputCallback = new OutputProvideCallback(channel, SelectionKey.OP_WRITE, ioProvider);
     }
 
     @Override
     public void close() throws IOException {
         if (isClosed.compareAndSet(false, true)) {
-            ioProvider.unRegisterInput(channel);
-            ioProvider.unRegisterOutput(channel);
+            ioProvider.unRegister(channel);
             CloseUtils.close(channel);
             listener.onChannelClosed(channel);
         }
@@ -54,46 +51,42 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
 
     @Override
     public void setReceiveListener(IOArgsEventProcessor receiverProcessor) {
-        this.receiverProcessor = receiverProcessor;
-    }
-
-    @Override
-    public boolean postReceiveAsync() throws IOException {
-        if (isClosed.get()) {
-            throw new IOException("当前通道已关闭");
-        }
-        // 进行callback状态检查，判断是否由于上一次未读取或写入完成而处于自循环状态
-        inputCallback.checkAttachIsNull();
-        return ioProvider.registerInput(channel, inputCallback);
+        this.inputCallback.eventProcessor = receiverProcessor;
     }
 
     @Override
     public void setSendListener(IOArgsEventProcessor sendProcessor) {
-        this.sendProcessor = sendProcessor;
+        this.outputCallback.eventProcessor = sendProcessor;
     }
 
     @Override
-    public boolean postSendAsync() throws IOException {
-        if (isClosed.get()) {
+    public void postReceiveAsync() throws Exception {
+        if (isClosed.get() || !channel.isOpen()) {
+            throw new IOException("当前通道已关闭");
+        }
+        // 进行callback状态检查，判断是否由于上一次未读取或写入完成而处于自循环状态
+        inputCallback.checkAttachIsNull();
+        ioProvider.register(inputCallback);
+    }
+
+    @Override
+    public void postSendAsync() throws Exception {
+        if (isClosed.get() || !channel.isOpen()) {
             throw new IOException("当前通道已关闭");
         }
         // 进行callback状态检查，判断是否由于上一次未读取或写入完成而处于自循环状态
         outputCallback.checkAttachIsNull();
-        // 这里进行注册，后面将callback放在线程池中进行调度，而在callback中我们发现如果发送出现问题还是会
-        // 进行一次注册，而放在线程池中进行调度比较耗时（下面方法），如果在这里直接调用一次callback.run()
-//        return ioProvider.registerOutput(channel, outputCallback);
-        outputCallback.run();
-        return true;
+        ioProvider.register(outputCallback);
     }
 
     @Override
     public long getLastWriterTime() {
-        return lastWriteTime;
+        return this.outputCallback.lastActiveTime;
     }
 
     @Override
     public long getLastReadTime() {
-        return lastReadTime;
+        return this.inputCallback.lastActiveTime;
     }
 
     public interface OnChannelStatusChangedListener {
@@ -101,68 +94,64 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
         void onChannelClosed(SocketChannel channel);
     }
 
+    class InputProvideCallback extends AbsProviderCallback {
 
-    private final HandleProviderCallback inputCallback = new HandleProviderCallback() {
+        InputProvideCallback(SocketChannel channel, int ops,
+            IoProvider ioProvider) {
+            super(channel, ops, ioProvider);
+        }
+
         @Override
-        protected void onProviderIo(IoArgs args) {
-            if (isClosed.get()) {
-                return;
-            }
+        protected int consumeIoArgs(IoArgs args, SocketChannel channel) throws IOException {
+            return args.readFrom(channel);
+        }
+    }
 
-            lastReadTime = System.currentTimeMillis();
-            IOArgsEventProcessor processor = receiverProcessor;
-            // 表示可能被取消掉了
-            if (processor == null) {
-                return;
-            }
-            if (args == null) {
-                args = processor.provideIoArgs();
-            }
-            // 具体的读取操作
-            try {
-//                System.out.println("处理接收到客户端的数据进行处理");
-                if (args == null) {
-                    processor.onConsumeFailed(null, new IOException("Provider IoArgs is null"));
-                } else {
-                    int count = args.readFrom(channel);
-                    if (count == 0) {
-                        System.out.println("Current read zero data");
-                    }
-                    // 检查是否还有空闲空间，以及是否需要填满空闲空间
-                    if (args.remained() && args.isNeedConsumeRemaining()) {
-                        attach = args;
-                        ioProvider.registerInput(channel, this);
-                    } else {
-                        attach = null;
-                        processor.onConsumeCompleted(args);
-                    }
-                }
-            } catch (IOException e) {
+    class OutputProvideCallback extends AbsProviderCallback {
+
+        OutputProvideCallback(SocketChannel channel, int ops,
+            IoProvider ioProvider) {
+            super(channel, ops, ioProvider);
+        }
+
+        @Override
+        protected int consumeIoArgs(IoArgs args, SocketChannel channel) throws IOException {
+            return args.writeTo(channel);
+        }
+    }
+
+    abstract class AbsProviderCallback extends IoProvider.HandleProviderCallback {
+
+        volatile IoArgs.IOArgsEventProcessor eventProcessor;
+        volatile long lastActiveTime;
+
+        AbsProviderCallback(SocketChannel channel, int ops, IoProvider ioProvider) {
+            super(channel, ops, ioProvider);
+        }
+
+        @Override
+        public void fireThrowable(Throwable e) {
+            final IoArgs.IOArgsEventProcessor processor = eventProcessor;
+            if (processor == null || processor.onConsumeFailed(e)) {
                 CloseUtils.close(SocketChannelAdapter.this);
             }
         }
-    };
 
-    /**
-     * 这里当网络可以发送当时候，我们获取一个IoArgs，然后将数据写入到通道中进行发送，
-     * <p> 但是当数据还没有发送完毕的时候，网卡可能将资源让给了另外一个通道，此时IoArgs
-     * <p> 在写入的时候可能返回0，这个0不代表写完成，也有可能是网卡没把资源给当前通道，
-     * <p> 此时我们应该放弃输出，而是再次注册selector，表明还有数据没有发送完成。而
-     * <P> 同时需要将当前无法发送的通道占用的线程放弃掉，让给其他通道
-     */
-    private final HandleProviderCallback outputCallback = new HandleProviderCallback() {
+        protected abstract int consumeIoArgs(IoArgs args, SocketChannel channel) throws IOException;
+
         @Override
-        protected void onProviderIo(IoArgs args) {
+        protected final boolean onProviderIo(IoArgs args) {
             if (isClosed.get()) {
-                return;
+                return false;
             }
-            lastWriteTime = System.currentTimeMillis();
-            // 这里的sendProcessor是传入的
-            IoArgs.IOArgsEventProcessor processor = sendProcessor;
+
+            final IoArgs.IOArgsEventProcessor processor = eventProcessor;
             // 表示可能被取消掉了
             if (processor == null) {
-                return;
+                return false;
             }
+            lastActiveTime = System.currentTimeMillis();
+
             if (args == null) {
                 // 如果为空，则请求获取一份，如果不为空，则是上一次未发送完的
                 args = processor.provideIoArgs();
@@ -171,27 +160,26 @@ public class SocketChannelAdapter implements Sender, Receiver, Closeable {
             // 具体的发送操作
             try {
                 if (args == null) {
-                    processor.onConsumeFailed(null, new IOException("消费失败"));
+                    throw new EmptyIoArgsException("ProvideIoArgs is null");
+                }
+
+                int count = consumeIoArgs(args, channel);
+                // 检查是否还有未消费的数据 以及是否需要将所有数据都消费掉
+                if (args.remained() && (count == 0 || args.isNeedConsumeRemaining())) {
+                    // 还有数据输出，则再次注册
+                    attach = args;
+                    return true;
                 } else {
-                    int count = args.writeTo(channel);
-                    if (count == 0) {
-                        // 表明当前是无法发送数据的
-                        System.out.println("Current write zero data");
-                    }
-                    // 检查是否还有未消费的数据 以及是否需要将所有数据都消费掉
-                    if (args.remained() && args.isNeedConsumeRemaining()) {
-                        // 还有数据输出，则再次注册
-                        attach = args;
-                        ioProvider.registerOutput(channel, this);
-                    } else {
-                        // 读取后进行回调
-                        attach = null;
-                        processor.onConsumeCompleted(args);
-                    }
+                    // 读取后进行回调
+                    attach = null;
+                    return processor.onConsumeCompleted(args);
                 }
             } catch (IOException e) {
-                CloseUtils.close(SocketChannelAdapter.this);
+                if (processor.onConsumeFailed(e)) {
+                    CloseUtils.close();
+                }
+                return false;
             }
         }
-    };
+    }
 }

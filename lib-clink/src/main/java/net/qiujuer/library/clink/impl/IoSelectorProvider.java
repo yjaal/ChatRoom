@@ -74,30 +74,6 @@ public class IoSelectorProvider implements IoProvider {
     }
 
     @Override
-    public boolean registerInput(SocketChannel channel, HandleProviderCallback callback) {
-        // 这里首先要进行注册
-        return registerSelection(channel, readSelector, SelectionKey.OP_READ, inRegInput,
-            inputCallbackMap, callback) != null;
-    }
-
-    @Override
-    public boolean registerOutput(SocketChannel channel, HandleProviderCallback callback) {
-        // 这里首先要进行注册
-        return registerSelection(channel, writeSelector, SelectionKey.OP_WRITE, inRegOutput,
-            outputCallbackMap, callback) != null;
-    }
-
-    @Override
-    public void unRegisterInput(SocketChannel channel) {
-        unRegisterSelection(channel, readSelector, inputCallbackMap, inRegInput);
-    }
-
-    @Override
-    public void unRegisterOutput(SocketChannel channel) {
-        unRegisterSelection(channel, writeSelector, outputCallbackMap, inRegOutput);
-    }
-
-    @Override
     public void close() throws IOException {
         if (isClosed.compareAndSet(false, true)) {
             inputHandlePool.shutdown();
@@ -231,6 +207,28 @@ public class IoSelectorProvider implements IoProvider {
             // 线程池异步调度
             inputHandlePool.execute(runnable);
         }
+    }
+
+    @Override
+    public void register(HandleProviderCallback callback) throws Exception {
+        SelectionKey key;
+        if (callback.ops == SelectionKey.OP_READ) {
+            key = registerSelection(callback.channel, readSelector, SelectionKey.OP_READ,
+                inRegInput, inputCallbackMap, callback);
+        } else {
+            key = registerSelection(callback.channel, writeSelector, SelectionKey.OP_WRITE,
+                inRegOutput, inputCallbackMap, callback);
+        }
+
+        if (key == null) {
+            throw new IOException("Register error: " + callback.channel + " ops:" + callback.ops);
+        }
+    }
+
+    @Override
+    public void unRegister(SocketChannel channel) {
+        unRegisterSelection(channel, readSelector, inputCallbackMap, inRegInput);
+        unRegisterSelection(channel, writeSelector, outputCallbackMap, inRegOutput);
     }
 
     static class SelectorThread extends Thread {
