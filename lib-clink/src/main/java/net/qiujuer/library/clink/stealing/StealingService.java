@@ -1,6 +1,8 @@
 package net.qiujuer.library.clink.stealing;
 
 import java.util.Arrays;
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.IntFunction;
 
@@ -25,7 +27,7 @@ public class StealingService {
     /**
      * 对应的任务对垒
      */
-    private final LinkedBlockingQueue<IoTask>[] queues;
+    private final Queue<IoTask>[] queues;
 
     /**
      * 结束标志
@@ -37,16 +39,16 @@ public class StealingService {
         this.minSafetyThreshold = minSafetyThreshold;
         this.queues = Arrays.stream(threads)
             .map(StealingSelectorThread::getReadyTaskQueue)
-            .toArray((IntFunction<LinkedBlockingQueue<IoTask>[]>) LinkedBlockingQueue[]::new);
+            .toArray((IntFunction<Queue<IoTask>[]>) ArrayBlockingQueue[]::new);
     }
 
     /**
      * 窃取一个任务，排除自己，从他人队列窃取一个任务
      */
-    IoTask steal(final LinkedBlockingQueue<IoTask> excludeQueue) {
+    IoTask steal(final Queue<IoTask> excludeQueue) {
         final int minSafetyThreshold = this.minSafetyThreshold;
-        final LinkedBlockingQueue<IoTask>[] queues = this.queues;
-        for (LinkedBlockingQueue<IoTask> queue : queues) {
+        final Queue<IoTask>[] queues = this.queues;
+        for (Queue<IoTask> queue : queues) {
             if (queue == excludeQueue) {
                 continue;
             }

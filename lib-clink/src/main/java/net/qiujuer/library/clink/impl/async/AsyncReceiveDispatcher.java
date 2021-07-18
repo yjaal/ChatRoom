@@ -7,6 +7,7 @@ import net.qiujuer.library.clink.core.IoArgs.IOArgsEventProcessor;
 import net.qiujuer.library.clink.core.ReceiveDispatcher;
 import net.qiujuer.library.clink.core.ReceivePacket;
 import net.qiujuer.library.clink.core.Receiver;
+import net.qiujuer.library.clink.impl.exceptions.EmptyIoArgsException;
 import net.qiujuer.library.clink.utils.CloseUtils;
 
 /**
@@ -38,24 +39,21 @@ public class AsyncReceiveDispatcher implements ReceiveDispatcher, IOArgsEventPro
     private void registerReceive() {
         try {
             receiver.postReceiveAsync();
-        } catch (IOException e) {
-            closeAndNotify();
+        } catch (Exception e) {
+            CloseUtils.close(this);
         }
-    }
-
-    private void closeAndNotify() {
-        CloseUtils.close(this);
     }
 
     @Override
     public void stop() {
-
+        receiver.setReceiveListener(null);
     }
 
     @Override
     public void close() throws IOException {
         if (isClosed.compareAndSet(false, true)) {
             writer.close();
+            receiver.setReceiveListener(null);
         }
     }
 
@@ -71,26 +69,23 @@ public class AsyncReceiveDispatcher implements ReceiveDispatcher, IOArgsEventPro
     }
 
     @Override
-    public void onConsumeFailed(IoArgs args, Exception e) {
-        e.printStackTrace();
+    public boolean onConsumeFailed(Throwable e) {
+        CloseUtils.close(this);
+        return true;
     }
 
     @Override
-    public void onConsumeCompleted(IoArgs args) {
-        // 已经被关闭了
-        if (isClosed.get()) {
-            return;
-        }
+    public boolean onConsumeCompleted(IoArgs args) {
+        AtomicBoolean isClosed = this.isClosed;
+        AsyncPacketWriter writer = this.writer;
         // 消费数据之前标识args数据填充完成，改变未可读取数据状态，然后进行消费
         args.finishWriting();
 
         // 有数据则循环消费
         do {
-            writer.consumeIoArgs(args);
-        } while (args.remained() && !isClosed.get());
-
-        // 继续接收
-        registerReceive();
+            this.writer.consumeIoArgs(args);
+        } while (args.remained() && !this.isClosed.get());
+        return !isClosed.get();
     }
 
     @Override

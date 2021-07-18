@@ -2,6 +2,8 @@ package net.qiujuer.library.clink.impl.async;
 
 import java.io.IOException;
 import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.qiujuer.library.clink.core.IoArgs;
@@ -10,6 +12,7 @@ import net.qiujuer.library.clink.core.SendDispatcher;
 import net.qiujuer.library.clink.core.SendPacket;
 import net.qiujuer.library.clink.core.Sender;
 import net.qiujuer.library.clink.impl.async.AsyncPacketReader.PacketProvider;
+import net.qiujuer.library.clink.impl.exceptions.EmptyIoArgsException;
 import net.qiujuer.library.clink.utils.CloseUtils;
 
 /**
@@ -23,7 +26,7 @@ public class AsyncSendDispatcher implements SendDispatcher, IOArgsEventProcessor
     private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
     private final Sender sender;
-    private final Queue<SendPacket<?>> queue = new ConcurrentLinkedQueue();
+    private final BlockingQueue<SendPacket<?>> queue = new ArrayBlockingQueue<>(16);
     private final AtomicBoolean isSending = new AtomicBoolean();
     private final AsyncPacketReader packetReader = new AsyncPacketReader(this);
 
@@ -36,55 +39,56 @@ public class AsyncSendDispatcher implements SendDispatcher, IOArgsEventProcessor
 
     @Override
     public void send(SendPacket packet) {
-        // 将消息存入到队列中
-        queue.offer(packet);
-        // 请求发送
-        requestSend();
+        try {
+            // 将消息存入到队列中
+            queue.put(packet);
+            // 请求发送
+            requestSend(false);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void sendHeartbeat() {
         // 如果队列中本身就有数据，那就没必要发送心跳帧了，因为发送数据本身就可以完成心跳的作用
-        if (queue.size() <= 0) {
-            boolean addRes = packetReader.requestSendHeartbeatFrame();
-            if (addRes) {
-                requestSend();
+        if (!queue.isEmpty()) {
+            if (packetReader.requestSendHeartbeatFrame()) {
+                requestSend(false);
             }
         }
     }
 
     /**
      * 请求网络发送
+     *
+     * @param callFromIoConsume 表示是否是从IO消费流程中调用的，因为还有心跳发送调用
      */
-    private void requestSend() {
-        synchronized (isSending) {
-            // 如果正在发送或者已关闭则暂时不发送
-            if (isSending.get() || isClosed.get()) {
+    private void requestSend(boolean callFromIoConsume) {
+        synchronized (this.isSending) {
+            final AtomicBoolean isRegisterSending = this.isSending;
+            final boolean oldState = isRegisterSending.get();
+            if (isClosed.get() || (oldState && !callFromIoConsume)) {
                 return;
             }
 
+            if (callFromIoConsume && !oldState) {
+                throw new IllegalStateException("消费过程中，却不是运行状态，异常");
+            }
             // 如果有数据则进行发送
             if (packetReader.requestTakePacker()) {
                 try {
-                    isSending.set(true);
-                    boolean isSucc = sender.postSendAsync();
-                    if (!isSucc) {
-                        isSending.set(false);
-                    }
-                } catch (IOException e) {
-                    closeAndNotify();
+                    isRegisterSending.set(true);
+                    sender.postSendAsync();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    CloseUtils.close(this);
                 }
+            } else {
+                isRegisterSending.set(false);
             }
         }
     }
-
-    /**
-     * 关闭自己并通知调用方
-     */
-    private void closeAndNotify() {
-        CloseUtils.close();
-    }
-
 
     @Override
     public SendPacket takePacket() {
@@ -145,21 +149,29 @@ public class AsyncSendDispatcher implements SendDispatcher, IOArgsEventProcessor
     }
 
     @Override
-    public void onConsumeFailed(IoArgs args, Exception e) {
-        e.printStackTrace();
-        synchronized (isSending) {
-            isSending.set(false);
+    public boolean onConsumeFailed(Throwable e) {
+        if (e instanceof EmptyIoArgsException) {
+            // 继续请求发送当前的数据
+            requestSend(true);
+            return false;
+        } else {
+            CloseUtils.close(this);
+            return true;
         }
-        // 继续请求发送当前的数据
-        requestSend();
     }
 
     @Override
-    public void onConsumeCompleted(IoArgs args) {
+    public boolean onConsumeCompleted(IoArgs args) {
         synchronized (isSending) {
-            isSending.set(false);
+            AtomicBoolean isRegisterSending = this.isSending;
+            final boolean isRunning = !isClosed.get();
+
+            if (!isRegisterSending.get() && isRunning) {
+                throw new IllegalStateException("未注册却是运行状态，不应该发生");
+            }
+            isRegisterSending.set(isRunning && packetReader.requestTakePacker());
+
+            return isRegisterSending.get();
         }
-        // 继续请求发送当前的数据
-        requestSend();
     }
 }
